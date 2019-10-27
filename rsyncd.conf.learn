@@ -1,0 +1,71 @@
+rsyncd.conf 配置文件
+	
+FIle Format
+
+GLOBAL PARAMETERS:
+	您可以在参数值中使用对环境变量的引用。字符串参数将尽可能晚地扩展％VAR％引用（在程序中使用字符串时），从而允许使用rsync在连接时设置的变量，例如RSYNC_USER_NAME。从配置文件中读取时，将扩展非字符串参数（例如，true / false设置）。如果环境中不存在变量，或者字符序列不是有效的引用（例如，未配对的百分号），则原始字符将原样传递。这有助于向后兼容和安全（例如，将不存在的％VAR％扩展为路径中的空字符串可能会导致非常不安全的路径）。将文字％插入值中最安全的方法是使用%%。
+	
+	motd file: 提供连接时的展示信息
+		--dparam=motdfile=FILE 可以覆盖此选项
+	
+	pid file: 写入pid文件， 如果已经存在次文件，则rsync将会终止.
+		--dparam=pidfile=FILE
+	
+	port: 监听的端口号，
+		--port 
+		
+	socket options: 
+		This parameter can provide endless fun for people who like to tune their system to the utmost degree.
+		自定义tcp选项
+	
+	address: ip地址
+	
+	log file: 守护进程日志
+	
+	syslog facility 指定rsync发送消息给syslog的级别
+	
+		
+MODULE PARAMETERS:
+	comment: some informations. default is no comment
+	
+	path: you must specify this parameter for each module in rsyncd.conf
+		可以使用环境变量, path=/home/%RSYNC_C_USER_NAME%
+	
+	use chroot
+		If "use chroot" is true, the rsync daemon will chroot to the "path" before starting the file transfer with the client.(传输文件开始前), of not being able to（无法） follow symbolic links that are either absolute or outside of the new root path.
+		
+	daemon chroot(建立连接时): 与客户端连接开始时chroot到指定目录下， 这可能需要rsync的运行时库，默认不开启，也不建议开启.
+	
+	max connections: 此参数允许您指定允许的最大同时连接数。
+		the default value 0 which is means no limit
+	
+	log file: 指定日志文件，可以在全局或者模块中指定。
+		--log-file=FILE
+	
+	syslog facility: 
+		默认为daemon, 日至级别
+		可选: auth, authpriv, cron, daemon, ftp, kern, lpr, mail, news, security, syslog, user, uucp, 
+		local0, local1, local2, local3, local4, local5, local6 and local7.
+	
+	syslog tag: 
+		syslog标记， 默认为rsyncd
+	
+		max verbosity: The default is 1, which allows the client to request one level of verbosity.
+	
+	lock file: 
+		这个选项用来指定锁文件， 用来支持最大连接选项
+	
+	read only:
+		确定用户是否可以上传文件， true 不能，false的话还得看权限
+	
+	write only:
+		确定用户是否可以下载文件, 如果“只写”为true，则任何尝试的下载都将失败,
+		The default is for this parameter to be disabled.
+		
+	list:
+		
+	
+	
+	
+	
+	
