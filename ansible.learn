@@ -1,0 +1,39 @@
+Ansible Module
+
+template:
+    attributes: 文件的属性, 可以使用man chattr 查看具体的选项
+    backup: 是否备份
+    src
+    dest
+
+file:
+    path: 
+    owner
+    group
+    mode
+    state: {absent,directory,file,hard,link,touch}
+        创建普通文件使用touch, 修改时使用file
+    access_time:
+        now
+    preserve (保留第一次的时间，再次执行是时幂等)
+        2.7 or high
+    modification_time:
+    recurse:
+        递归设置目录的属性，only directory
+
+lineinfile:
+    attributes: lsattr,chattr version > 2.3
+    backrefs: 正则取反, insterafter, insertbefore 将会失效
+    firstmatch:
+    insterafter
+        EOF: 插入到最后一行
+        不可与backrefs或insertbefore一起使用
+    insertbefore:
+        BOF: 插入开头
+    line:  
+        required: state=present
+        insert or replace into the file
+    regexp:
+    state:
+        present
+        absent
