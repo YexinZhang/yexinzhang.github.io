@@ -1,0 +1,793 @@
+redis
+
+https://drstearns.github.io/tutorials/gomiddleware/
+https://gowebexamples.com/advanced-middleware/
+redis-cli 
+	-h
+	-p
+	-a password
+	-n <dbnum>
+	-u 使用有效的redis url
+		redis-cli -u redis://[pPASSWORD@]localhost:6379/[数据库编号]0 ping
+	-r 指明指令要执行的次数
+		redis-cli -r 5 incr KEY
+	-i 指明连续执行指令之间的间隔时间
+
+	-x 
+		redis-cli -x set KEY < otherProgram|/path/to/somefile
+	--stat
+	--scan
+	--pattern "模式"
+		--pattern "*-100*"
+	monitor
+
+
+数据结构:
+
+sds:
+	struct sdshdr{
+		int len;  记录buf中已使用的字节的数量
+		int free; 记录buf数组中未使用字节的数量
+		char buf[]; 字节数组，同来保存字符串
+	}
+
+	修改之前，调用sds的api会对sds的空间进行检查，看是否满足所需要的空间并修改
+
+字典
+		hash表:
+
+	|-------typedef struct dictht {
+	|
+	|	|-------dictEntry **table 哈希表数组 []每一个元素指向dictEntry结构体
+	|	|		大小 usigned long size;
+	|	|		大小掩码 unsigned long sizemark
+	|	|		已有节点数量 unsigned long used;
+	|	|	} dictht;
+	|	|	  table 哈希表数组 []每一个元素指向dictEntry结构体
+	|	|	  每个dictentry保存一个键值对
+	|	|
+	|	|------>typedef struct dictEntry  {
+	|				//key 键
+	|				void *key
+	|				// 值
+	|				union {
+	|					void *val;
+	|					uint64_tu64;
+	|					int63_ts64;
+	|				} v;
+	|				struct dictEntry *next
+	|			} dictEntry;
+	|
+	|	字典:
+	|		typedef struct dict {  //字典
+	|			
+	|			dictType *type;
+	|			void *privdata
+	|---------->dictht ht[2]  h[0]用于存储键值对， h[1]一般用于rehash
+				in trehashidx; //rehash索引
+			}
+
+		rehash:
+			rehash是指，为了减小哈希表的负担，重新对hash表进行分配空间，扩展或者压缩，并且重新进行计算索引
+				rehash
+					1、先计算h[0]的used大小，
+					2、
+						扩展rehash：对这个大小进行乘2，并且取大于这个值的最接近的二的n次方大小，作为h[1]的大小，
+						缩减rehash：第一个大于等于used的2^n
+					3、将h[0]中的键值对rehash到h[1]中，重新计算	键的hash和索引，
+					4、然后将键值对放入h[1]哈希表的指定索引上面，
+					5、将原来的h[0]防空，并将h[1]设置为新的h[0]
+
+		自动rehash
+			扩展：
+			没有进行BGSAVE或者BGREWRITEAOF，哈希表的负载因子大于等于1
+			进行BG~时，哈希表的负载因子大于等于5
+				负载因子= h[0].used / h[0].size
+
+				bg~行为会创建子进程进行操作，子进程基于cow机制，要尽可能避免在子进程存在时进行扩展，可以避免不必要的内存写入操作.
+			缩减：
+				负载因子小于0.1
+
+		rehash是渐近式的，非一次性
+			rehash过程中， 字典的删除、查找、更新等操作会在两个哈希表上进行，现在h[0]上进行
+			若果找不到的话，会在h[1]上进行
+
+
+	跳跃表：
+
+		跳跃表节点
+		typedef struct zskiplistNode {
+
+			//层 level
+			struct zskiplistLevel {
+				// 前进指针
+				struct zskiplistNode *forward;
+				// 跨度
+				unsigned int span;
+			} level[];
+			// 后退指针BW
+			struct zskiplistNode *backward;
+			// 分值 score
+			double score;
+			// 成员对象
+			robj *obj;
+		} zskiplistNode;
+
+
+	压缩列表：
+		组成
+			zlbytes 记录整个压缩列表所占用的内存
+			zltail  记录压缩列表的为节点距离起始位置的偏移量
+			zllen	记录压缩列表的元素数目
+			entryX  节点X，内容长度有元素自定
+			zlend	压缩列表结尾特殊编码
+		
+		压缩列表节点（entryX）：
+			previous_entry_length: 前一个结点的字节长度
+			encoding: content 数组的编码格式
+			content:  保存着节点的值s
+
+对象
+	由redisObject组成
+	type：
+		REDIS_STRING
+		REDIS_LIST
+		REDIS_HASH
+		REDIS_SET
+		REDIS_ZSET 有序集合
+
+	encoding:
+		REDIS_ENCODING_INT
+		REDIS_ENCODING_EMBSTR
+		REDIS_ENCODING_RAW
+		REDIS_ENCODING_HT ------字典
+		REDIS_ENCODING_LINKEDLIST -------双端链表
+		REDIS_ENCODING_ZIPLIST
+		REDIS_ENCODING_INTSET  ---------整数集合
+		REDIS_ENCODING_SKIPLIST ------跳跃表和字典
+
+	对象的部分组成
+		type struct redisObject {
+			type 
+			encoding
+			ptr --> 指向底层数据结构
+			//...
+		}
+
+	整数对象
+
+		SET number 10086
+			redisObject.ptr --> 10086
+			redisObject.type --> REDIS_STRING
+			redisObject.encoding --> REDIS_ENCODING_INT
+
+		SET story "long long long long ago lived a king...."
+			redisObject.type ---> REDIS_STRING
+			redisObject.encoding ---> REDIS_ENCODING_RAW
+ 			redisObject.ptr ---> sdshdr
+ 								 sdshdr.free = 0
+ 								 sds.len = len(story)
+ 								 sds.buf=['l','o','n','g'....'.','.','\0']
+
+ 	    REDIS_ENCODING_EMBSTR数据编码和raw的执行效果相同
+ 	    但是embstr用于短字符，一般情况下是小于44字节的字符
+
+		SET, GET, APPEND, INCRBYFLOAT, INCRBY, DECRBY, STRLEN, SETRANGE, GETRANGE,
+
+	列表对象
+		ziplist 或者 双端链表
+
+		LPUSH 调用ziplistPush 压入表头
+		RPUSH 表尾
+		LPOP 调用ziplistindex函数定位
+		RPOP
+		lindex
+		llen
+		linsert
+		lrem  便利表节点，删除包含给定元素的节点
+		ltrim  删除所有不在指定范围内的节点
+		lset  先删除后insert
+
+	哈希对象：
+
+
+	有序集合
+		ziplist 或者 zset结构体
+			
+			有序集合保存的元素数目小于128个，所有元素的长度都小于64字节时会使用ziplist编码
+
+		ZADD
+		ZCARD 统计元素数目 ziplist 获得压缩列表entryx数目除以二， skiplist 直接返回length属性
+		ZCOUNT 便利表，统计分值在给定范围内的节点数量
+		ZRANGE
+		ZREVRANGE
+		ZRANK
+		ZREVRANK
+		ZREM
+		ZSCORE
+
+
+	expire key time 设置键的过期时间
+	ttl key 查看过期时间
+	persist key 接触键和过期时间的关链
+
+
+服务端接受客户端的命令：
+	1、 查找命令的实现
+
+	从命令表中查找，命令表是一个字典，字典中的键是命令的名字，比如“set”，“push”
+	字典的值是 redisCommand结构体
+		type struct redisCommand {
+			char* name
+			redisCommandProc* proc 函数指针，指向命令的实现函数
+			int arity 函数需要的参数个数N，如果为-N表示大于等于N
+			char* sflags 命令的属性，eg，read or write.
+			... 
+		}
+
+	2、 执行预备操作
+		检查客户端信息，auth， 服务器memory， 命令参数个数，是否有此命令
+
+	3、 调用命令实现函数
+
+	4、 执行后续操作
+		慢查询检测、 修改redisCommand结构的元素、AOF检测、 replication检测
+
+	5、 回复结果
+
+旧版复制
+
+	SYNC：
+		当从服务器设置slaveof 之后，
+		1、 向主服务器发送sync命令
+		2、 收到sync之后，执行BGSAVE命令，在后台生成一个RDB文件，并且生成一个缓冲区
+			记录执行BGSAVE时，之后所有的写操作
+		3、 BGSAVE命令执行完毕之后，主服务器将生成的RDB文件发送给从服务器，从服务器载入
+		4、 主服务器将缓冲区中的命令发送给从服务器，从服务器读取到命令之后执行命令。
+
+		当同步完之后，随后的复制便是传递写操作的命令
+
+			当主从服务中途断开之后，从服务器再一次链接主服务器时，会再一次发生sync操作。会从新
+		将主服务器的键全部拷贝至本地。
+
+新版复制（2.8及以后）
+	
+	PSYNC：
+		初次同步的时候和SYNC是一至的
+		在断开连接之后的重新同步当中，从服务器向主服务器发送PSYNC命令，并且报告自己的复制偏移量，主服务器
+	向其返回+CONTINUE 回复，表示执行部分重同步，从服务器接收到消息之后，准备执行部分重同步，主服务器将断开
+	连接之后执行的写操作命令发送给从服务器。
+
+	部分重同步
+
+		1、主，从服务器的复制偏移量(replication offset)
+		2、主服务器复制积压缓冲队列（固定大小的FIFO队列）
+			主服务器在发送给从服务器命令时，也会发送一份给这个缓冲区
+			如果偏移量之后的数据已经不存在与此缓冲区，主服务器将执行完全重同步
+		3、服务器运行的ID
+			主要时用来判断是否是从服务器上次链接的主服务器，如果是，则执行部分重同步，如果不是的话，则执行wan
+		完整同步。
+
+
+
+检测主从服务器的网络连接状态
+
+	info replication
+
+		# Replication
+		role:master
+		connected_slaves:1
+		slave0:ip=192.168.244.136,port=6379,state=online,offset=13429,lag=1
+		-------------lag=1 表示了主从之间的发送REPLCONF 检测 之间的时间间隔，一般为或者1
+					超过一的话，说明主从之间的链接出现了问题
+		master_replid:c3ae30a8951ac25924699984b9d6e9552392cab3
+		master_replid2:0000000000000000000000000000000000000000
+		master_repl_offset:13429
+		second_repl_offset:-1
+		repl_backlog_active:1
+		repl_backlog_size:1048576
+		repl_backlog_first_byte_offset:1
+		repl_backlog_histlen:13429
+
+
+sentinel：
+
+	echo 511 > /proc/sys/net/core/somaxconn
+	sysctl vm.overcommit_memory=1
+		内存分配策略：
+			0， 表示内核将检查是否有足够的可用内存供应给进程使用，没有的就会抛出异常，内存申请失败
+			1， 表示内核允许分配所有的物理内存，而不管当前的内存状态如何
+			2， 表示内核允许分配超过所有物理内存和交换空间总和的内存
+
+	Redis 服务器初始化
+
+	1、初始化服务器的状态结构
+		创建一个redisServer类型的实例
+		初始化server变量，这个步骤有redis.c/initServerConfig函数完成，
+		initServerCOnfig主要的工作：
+			a、设置服务器运行的ID
+			b、设置服务器的默认运行频率
+			c、设置服务器的默认配置文件路径
+			d、设置服务器的运行架构
+			e、设置默认端口号
+			f、设置默认的rdb和aof持久化条件
+			g、初始化服务器的LRU时钟
+			h、创建命令表
+	2、载入配置项
+		可以通过命令行参数传递或者制定配置文件
+		
+		比如，初始化的时候会指定程序的默认端口，6379
+		不过在载入配置项之后就会变成文件中的端口号
+
+	3、初始化服务器数据结构
+		server.clients 链表，这个链表记录了所有与服务器相连接的客户端的状态结构，链表的每个节点都包括了一个redisClient实例。
+		Server.db数组，数组中包含了 服务器的所有数据库
+		用于保存频道订阅信息的server.pubsub_channels字典
+		用于执行Lua脚本的Lua环境server.lua
+		慢查询日志属性
+		当执行到这一步时，调用initServer函数。为上述数据结构分配内存
+
+
+	Sentinel系统
+		1、启动并初始化Sentinel
+		redis-sentinel  /path/to/sentinel-config
+		
+		执行的步骤
+			初始化服务器
+				Sentinel服务器和普通的redis服务器使用的命令不一样
+			将普通的redis服务器使用的代码替换成Sentinel的专用代码
+			初始化Sentinel状态
+			根据固定的配置文件，初始化Sentinel的见识主服务器列表
+			创建连向主服务器的网络连接
+
+
+			sentinel 命令表
+				它只会使用后部分redis-cli的命令
+				Slaveof sentinel之间使用
+				发布订阅命令，其中puhlish命令只能在sentinel内部使用。
+				文件事件处理器（sentinel 内部使用，但关链的文件事件处理器和普通的redis服务器不同
+				时间事件处理器（sentinel内部使用）
+
+
+	初始化Sentinel状态
+		在应用了专用代码之后，服务器初始化一个sentinel.c/sentinelState的结构实例
+		
+		struct sentinelState {
+			
+			// 当前纪元，用于实现故障转移
+			
+			uint64_t current_epoch;
+
+			// 保存了所有被这个Sentinel见识的主服务器
+			// 字典的键是主服务器的名字
+			// 字典的值是指向SentinelRedisInstance结构的指针
+			dict *master;
+
+			// 是否今进入tilt模式
+			int tilt;
+			//...
+
+		}
+
+	初始化Sentinel的状态的master属性
+
+		Sentinel的master字典记录了 所有被Sentinel所见是的主服务器的相关信息
+		字典的键是被监视主服务器的名字
+		而字典的值是被监视的主服务器对应的Sentinel.c/sentinelRedisInstance结构
+		一个实例结构代表了一个主服务器，从服务器，或者另外一个Sentinel
+
+		typedef struct sentinelRedisInstance {
+
+			// 标示值用于指定实例的当前状态，类型
+			int flags;
+
+			// 实例的名字
+			// 主服务器的名字在配置文件中指定
+			// 从服务器以及sentinel的名字由sentinel自动设置
+			// 格式为ip：port
+			char *name;
+			// 实例运行的id
+			char *runid
+
+			// 配置纪元，用于实现故障转移
+			uint64_t config_epoch
+
+			// 实力的地址
+			sentinelAddr *addr;
+
+			// SENTINEL down-after-milliseconds 选项设定的值
+			// 实例无响应多少好面之后会判定其为主观下线
+			mstime_t down_after_period;
+
+			// 判断这个实例客观下线所需要的票数
+			int quorum;
+
+			// SENTINEL parrllel-syncs <master-name> <ms>
+			// 在执行故障转移操作时，可以同时对新的主服务器进行同步的从服务器数量
+			int parrllel-syncs;
+
+			//...
+		}
+
+			sentinelRedisInstance.addr 执行一个Addr的结构
+			struct {
+				char *ip
+				int port
+			}
+
+			sentinel 的简单配置文件如下
+			
+				sentinel monitor master1 127.0.0.1 6379 2
+				sentinel down-after-milliseconds master1 30000
+				sentinel parrllel-syncs master1 1
+				sentinel failover-timeout master1 90000
+
+
+			总的结构如下
+
+				 struct sentinelState {
+				 	...
+				 	master 
+				 		--> dict{
+				 			 master1 -->  struct sentinelRedisInstance { 
+				 			 				  name =  master1
+				 						  }
+				 			 } 
+				 	...	
+				 }
+
+		初始化数据结构之后，开始创建连向主服务器的网络连接
+
+			一个是命令链接，这个连接专门用于向主服务器发送命令，并接受命令回答
+			另一个是订阅链接，这个链接专门用于订阅主服务器的__sentinel__:hello 频道
+			这些链接都是异步连接
+
+		获取主服务器的信息
+			默认十秒一次通过命令连接向主服务器发送INFO命令，并通过INFO命令的回复分析主服务器的当前状态
+
+			sentinel --> master
+				master 会返回一些重要信息
+					比如：
+					run_id
+					role: master
+
+					slave#:ip=#,port=#,state=online(#),offset=#,lag=0
+					...
+
+					other sections
+
+				主服务器重启之后他的run_id和之前的就不同，sentinel就会对其进行修改
+				主服务器返回的从服务器信息，则被用来修改sentinelRedisInstance结构的slave字典
+				字典的键依然是slave的ip+port，值仍然是sentinelRedisInstance结构体
+
+		获取从服务器信息
+
+			当sentinel发现有新的从服务器出现时，不仅会创建从服务器的结构，而且会与从服务器建立命令连接
+			和订阅连接。
+			默认，10秒发送一次INFO命令，获得其信息
+			sentinel会提取一下信息：
+				从服务器运行ID run_id
+				从服务器角色 role
+				主服务器的IP地址master_host，以及端口
+				主从服务器连接状态 master_link_status
+				从服务器的优先级 slave_priority
+				复制偏移量 slave_repl_offset
+
+		向主服务器和从服务器发送消息
+			一般通过 PUBLISH __sentinel__:hello 频道，发送sentinel的信息以及master的信息
+
+		接受来自主服务器和从服务器的频道信息
+			SYBSCRIBE __sentinel__:hello
+
+			对于每个sentinel，及发送通过命令连接向服务器的sentinel:hello发送消息，也通过订阅链接接收消息
+
+			sentinel会更具别的sentinel发送的信息对主服务器的实例结构进行更新
+			如果接受到其他的sentinel信息，他会更新自己的sentinel字典
+				源sentinel的ip，port，id，epoch，源sentinel监听的主服务器的名字，ip，port，epoch
+				根据提取出来的主服务器参数，目标sentinel会根据自己sentinel状态里的master字典查找相应的服务器实力结构
+				根据提取出sentinel参数，检查master里是否有此sentinel结构，有则更新，没有则添加
+
+				比如sentinel解个手到了来自主或从服务器的频道消息，发现了一个新的监视器
+				则会更新自己的sentinelRedisInstance.sentinel字典，添加一个新的sentinel实例，字典的键为新sentinel
+				的IP:port
+			所以用户在使用sentinel的时候并不需要提供各个sentinel的信息，监视同一个master的sentinel会自动发现
+
+		创建与其他sentinel的命令链接
+
+			当发现新的sentinel的时候，二者相互建立命令链接，
+			两个sentinel之间不许用建立订阅链接，是因为而并须需要通过订阅链接来感知其他的sentinel，
+			而在与主服务器创建链接的时候，需要创建两个链接就是因为需要通过订阅链接来感知其他的sentinel
+
+		检测主观下线：
+			sentine会在每一秒向建立了命令链接的sentinelRedisInstance发送PING命令，并通过其返回信息判断其是否在线
+			有效的PING回复：
+				+PONG，-LOADING，-MASTERDOWN三种回复的一种
+			无效的回复
+				上述三种以外，以及限定时间内没有回复。
+
+			sentinel配置及文件中的down_after_millseconds指定了进入主观下线的时长
+			达到之后会修改实例的flags属性，修改为SRI_S_DOWN标识
+			多个Sentinel对于同一个server的判断标准可能不同
+
+		检测客观下线
+
+		1、 发送SENTINEL is-master-down-by-addr命令
+			先向其他的监控同一个master的sentinel发送信息 is-master-down-by-addr
+
+			SENTINEL is-master-down-by-addr <ip> <port> <current_epoch> <runid>
+
+			current_epoch: sentinel当前的配置纪元，用于选举头sentinel
+			runid： 可以是*符号或者sentinel运行ID，*符号代表仅仅用于检测主服务器的客观下线状态
+
+			eg: SENTINEL is-master-down-by-addr 127.0.0.1 6379 0 *
+
+		2、 接受 sentinel is-master-down-by-addr 命令
+
+			接收到命令之后，会根据其中的IP：port以及配置文件中的配置判断master是否下线，在发送is-master-down-by-addr的回复
+			down_state
+				1: 表示下线
+				0: 表示未下线
+			leader_runid
+				*:
+				局部领头sentinel的运行ID
+			leader_epoch
+				纪元
+
+		3、 接受is-master-down-by-addr回复
+		 	当接收到其他sentinel的恢复之后，判断主观下线数量是否达到了配置文件中的数目，达到时，会将主服务器属性结构的flags
+		 	的SRI_O_DOWN标识打开，表示主服务器进入了客观下线状态。
+
+
+		 选举零头sentinel
+		 	当一个主服务器被判断为客观下线时，监视这个主服务器的各个sentinel会进行协商，选举出一个领头的Sentinel，并由这个sentinel
+		 	对下线的主服务器进行故障转移操作。
+
+		 故障转移
+
+		 	选出新的主服务器
+		 	将所有从服务器的主服务器改为新选出来的服务器
+		 	将以下线的主服务器改为新主服务器的从服务器
+
+		 	选出新的主服务器：
+		 		挑选状态良好的从服务器，发送slave no one命令
+
+		 		领头的sentinel会将已下线的主服务器的所用从服务器保存到一个列表里面
+
+		 		1）删除列表中下线或者短线状态的从服务器
+		 		2）删除列表中最近五秒没有回复info信息的从服务器
+		 		3）删除所有与一下先主服务器连接断开超过down-after-millsecond*10毫秒的从服务器
+		 		4）之后，根据Sentinel将根据服务器的优先级，对列表中剩余的从服务器进行排序，并选出其中优先级最高的
+		 		5）如果具有多个相同优先级，则通过比较复制的偏移量
+		 		6）如果还选不出来，则选举其中运行id最小的从服务器
+
+		 	修改从服务器的复制目标
+
+
+
+集群 
+	
+	集群的数据结构： clusterNode 保存当前节点的状态，每个节点都会使用一个clusterNode结构记录自己的状态
+并为集群中的所有其他节点（包括主从）都创建一个相应的clusterNode结构，以此记录其他节点状态
+
+	struct clusterNode {
+
+		// 节点创键时间
+		mstime_t ctime;
+
+		// 节点的名字，40个16进制字符组成
+		char name[REDIS_CLUSTER_NAMELEN];
+
+		// 节点的标识及其状态
+		int flags;
+
+		// 节点当前的配置纪元，用于实现故障转移
+		uint64_t configEpoch;
+
+		// 节点的IP地址
+		char ip[REDIS_IP_STR_LEN];
+		// socket
+		int port
+
+		// 保存连接节点所需有关信息
+		clusterLink *link----
+							|	
+		...					|	
+	}						|	
+							↓
+		*link属性保存了一个clusterLink结构，该结构保存了连接节点相关的信息
+		typedef struct clusterLink {
+			// 连接创建的时间
+			mstime_t ctime;
+			
+			// tcp套接字描述符
+			int fd;
+			
+			// 输出缓冲区，保存着等待发送给其他节点的信息
+			sds sndbuf
+
+			// 输入缓冲区
+			sds rcvbuf
+
+			// 与这个节点相关联的节点，没有就为NULL
+			struct clusterNode *node;
+		}
+
+	每个物理节点都保存着一个 clusterState 结构
+		typedef struct clusterState {
+			// 指向当前节点的指针
+			clusterNode *myself
+
+			// 集群当前的配置纪元，用于实现故障转移
+			uint64_t curentEpoch
+
+			// 集群状态，在线还是下线
+			int state;
+
+			// 集群中至少处理一个槽的节点的数量
+			int size;
+
+			// 集群节点名单，包括myself节点
+			// 字典结构，键为节点名，值为节点对应的clusterNode结构
+			dict *nodes
+
+			//...
+		}
+
+
+
+redis-trib  
+
+create: 创建集群
+	
+	redis-trib create  --replicas 1 ip:port ... ip:port 
+		--replicas 选项是为每一个主master创建一个从节点，所以结点的数量最小为6个
+
+check: 检查集群
+
+	redis-trib check ip:port
+
+info: 检查集群信息
+	[root@zyxasr 7000]# redis-trib info
+	[ERR] Wrong number of arguments for specified sub command
+
+	[root@zyxasr 7000]# redis-trib info 10.240.170.229:7000
+	10.240.170.229:7000 (e149c4d0...) -> 1 keys | 4096 slots | 0 slaves.
+	10.240.170.236:7001 (c76fc0e1...) -> 0 keys | 4096 slots | 0 slaves.
+	10.240.170.230:7002 (a782c3a3...) -> 0 keys | 4096 slots | 0 slaves.
+	10.240.170.250:7005 (9411712f...) -> 2 keys | 4096 slots | 0 slaves.
+	[OK] 3 keys in 4 masters.
+	0.00 keys per slot on average.
+
+reshard: 重新分配槽节点:
+	
+	redis-trib reshard  ip:port  集群中的任意一个就行
+	是交互式的方式进行
+		会询问需要迁移的slots数量
+		迁移到拿一个节点，必须要输入节点的id，此命令会给出
+		从哪些节点中迁出，
+			all ： 表示平均分配
+			done： 指定节点，可以有多个，，最后以done结尾
+		enter all the source node IDs.
+	  	Type 'all' to use all the nodes as source nodes for the hash slots.
+	  	Type 'done' once you entered all the source nodes IDs.
+		Source node #1:c76fc0e10b3aaedf22d4c8106273e96a7d995700
+		Source node #2:done
+
+		host:port：必传参数，集群内任意节点地址，用来获取整个集群信息。
+
+		--from：源节点id，如果有多个源节点，使用逗号分隔，如果是all，则源节点为集群内出目标节点外的其它所有主节点。
+
+		--to：目标节点id，只能填写一个。
+
+		--slots：需要迁移槽的总数量。
+
+		--yes：迁移无需用户手动确认。
+
+		--timeout：控制每次migrate操作的超时时间，默认为60000毫秒。
+
+		--pipeline：控制每次批量迁移键的数量，默认为10。
+
+rebalance: 重新平衡
+
+	--weight <arg>：节点的权重，格式为node_id=weight，如果需要为多个节点分配权重的话，需要添加多个--weight <arg>参数，即--weight b31e3a2e=5 --weight 60b8e3a1=5，node_id可为节点名称的前缀，只要保证前缀位数能唯一区分该节点即可。没有传递–weight的节点的权重默认为1。
+
+	--auto-weights：自动将每个节点的权重默认为1。如果--weight和--auto-weights同时指定，则--auto-weights会覆盖前者。
+
+	--threshold <arg>：只有节点需要迁移的slot阈值超过threshold，才会执行rebalance操作。
+
+	--use-empty-masters：默认没有分配slot节点的master是不参与rebalance的。如果要让其参与rebalance，需添加该参数。
+
+	--timeout <arg>：设置migrate命令的超时时间。
+
+	--simulate：设置该参数，只会提示用户会迁移哪些slots，而不会执行真正的迁移操作。
+
+	--pipeline <arg>：定义cluster getkeysinslot命令一次取出的key数量，不传的话使用默认值为10。
+
+
+
+	redis-trib rebalance 10.240.170.229:7000 --auto-weights ----use-empty-masters
+
+
+add-node
+	new_host:new_port existing_host:existing_port
+	--slave
+	--master-id <arg>
+	如果添加的是从节点，其语法如下，
+
+	redis-trib.rb add-node --slave --master-id f413fb7e6460308b17cdb71442798e1341b56cbc 127.0.0.1:6379 127.0.0.1:6384
+	注意：--slave和--master-id必须写在前面，同样的参数，如果是下面这样写法，会提示错误，
+
+del-node
+	host:port node_id
+	在删除节点之前，其对应的槽必须为空，所以，在进行节点删除动作之前，必须使用redis-trib.rb reshard将其迁移出去。
+
+	需要注意的是，如果某个节点的槽被完全迁移出去，其对应的slave也会随着更新，指向迁移的目标节点。
+
+	redis-trib del-node 10.240.170.229:7000 dwadwadwalirfjhwseaokrhj4wui
+
+set-timeout 
+	超时时间
+	redis-trib.rb set-timeout host:port milliseconds
+
+call 
+	ip:port  command <arg>...
+	在集群所有节点上执行命令
+
+
+
+
+
+
+
+
+
+计算键属于哪个槽
+	CLUSTER KEYSLOT "KEY"
+
+ASK 和 MOVED错误的区别
+
+MOVED错误代表槽的负责权已经从一个节点转移到了另一个节点
+ASK错误只是两个节点在迁移槽的过程中使用的一种临时措施。
+
+
+故障转移：
+	被选中的从节点会执行slaveof no one，成为新的主节点
+	新的主节点会撤销所有对旧的主节点的槽指派，并将这些槽指派给自己
+	新的主节点向集群中广播一条pong消息，通知主节点变更，以前的槽指派也变更
+	新的主节点开始接受和自己负责的槽有关的命令请求。
+
+选举新的主节点
+
+	当一个从节点收到N/2+1张票时，会成为新的主节点，投票者为其他存活者的主节点。
+	如果一轮没选出来，配置纪元+1，从头开始选举。
+
+消息：
+	MEET： 请求接收者加入到发送者当前所处的集群里面
+
+	PING： 每隔一秒随机挑出5个节点，发送ping消息至最长时间没有发送过PING的节点，检测其是否在线
+
+
+	PONG： 消息表示确认MEET和PING已到达，也可以通过广播PONG消息，是集群里的节点刷新对此节点的认知，
+			比如一次故障转移之后的PONG消息。
+
+	FAIL： 当一个主节点A判断B进入FAIL状态时，A会向集群广播一条FAIL消息，接收到消息的节点会立即将B标
+			为下线。
+
+	PUBLISH：当一个节点接收到PUBLISH命令时，会执行，并且广播到集群，收到的也会执行相同的PUBLISH命令
+
+	消息由消息头和正文组成。
+
+	typedef struct {
+		uint32_t totlen; // 消息长度
+		uint64_t type; 	 //	消息类型
+
+		uint16_t count;	 // 消息正文包含的节点信息数量
+		//...
+
+		unsigned char myslots[REDIS_CLUSTER_SLOTS（16384）/8] // 发送者目前的槽指派信息
+
+		//...
+
+		union clusterMsgData data;//消息正文
+	} clusterMsg;
+

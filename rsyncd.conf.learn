@@ -62,10 +62,78 @@ MODULE PARAMETERS:
 		确定用户是否可以下载文件, 如果“只写”为true，则任何尝试的下载都将失败,
 		The default is for this parameter to be disabled.
 		
+	
 	list:
+		展示此模块是否为可列出的，如果为false，用户访问此module会被忽略.
 		
-	
-	
-	
-	
-	
+    uid:
+        传输文件的uid
+        
+    gid：
+        传输文件的gid
+        
+    daemon uid
+    
+    daemon gid
+    
+    fake super:
+        这样就可以存储文件的完整属性，而不必让守护程序实际以root身份运行。
+        
+    incoming chmod:
+        影响传入文件的权限
+    outgoing chmod:
+        影响传出文件的权限
+        
+    auth users:
+        指定一个用户名来进行传输，用户可以不出现在本地系统上面，也可以使用组名，但是用户应该真正出现在组中，
+        : --> specify the users or groupusers privileges;
+       一个用户 指挥匹配第一次的访问权权限，匹配到的话，会忽略后面的匹配条件。
+        example:
+                auth user = joe:deny, @Somegroup:deny, @admin:rw joe, @rsync:ro
+            See the above rules, The joe appear two seconds. but joe will be denied access no matter what.
+            如果需要指定一个带有空格的用户名或者组名， 这是需要在!开头!指定以逗号分割用户名，组名列表，
+               (开头有逗号)auth user= , joe:deny, @some group:ro, @rsync group:ro
+    
+    secrets file
+        指定连接用户名的密码
+        username:password
+        @group:password
+        
+    strict modes:
+        if true, 则secrets file must not be readable by any other user ID other than the one that the rsync daemon is running under.
+        默认为true， 一般设为600
+    
+    hosts allow:
+    hosts deny:
+    
+    ignore errors:
+        我们要设定为false, 在传输的错误阶段是否要忽略I/O错误，不忽略的花不会删除，所以我们在生产环境中不能开启忽略错误。
+    ignore nonreadable:
+        忽略客户端不可读的文件
+        
+    transfer logging:
+        
+    logging format\
+    
+        %a the remote IP address (only available for a daemon)
+        %b the number of bytes actually transferred
+        %B the permission bits of the file (e.g. rwxrwxrwt)
+        %c the total size of the block checksums received for the basis file (only when sending)
+        %C the full-file checksum if it is known for the file. For older rsync protocols/versions, the checksum was salted, and is thus not a useful value (and is not displayed when that is the case). For the checksum to output for a file, either the --checksum option must be in-effect or the file must have been transferred without a salted checksum being used. See the --checksum-choice option for a way to choose the algorithm.
+        %f the filename (long form on sender; no trailing "/")
+        %G the gid of the file (decimal) or "DEFAULT"
+        %h the remote host name (only available for a daemon)
+        %i an itemized list of what is being updated
+        %l the length of the file in bytes
+        %L the string " -> SYMLINK", " => HARDLINK", or "" (where SYMLINK or HARDLINK is a filename)
+        %m the module name
+        %M the last-modified time of the file
+        %n the filename (short form; trailing "/" on dir)
+        %o the operation, which is "send", "recv", or "del." (the latter includes the trailing period)
+        %p the process ID of this rsync session
+        %P the module path
+        %t the current date time
+        %u the authenticated username or an empty string
+        %U the uid of the file (decimal)
+        
+        timeout:
