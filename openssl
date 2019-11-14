@@ -1,0 +1,18 @@
+OpenSSL Architecure
+
+1.libcrypto:
+    核心库，提供以及实现了密码学原语.
+    它还提供了一组供libssl和libcrypto使用的支持服务，以及诸如CMS和OCSP之类的协议的实现。
+
+2. Engine:
+    dynamically loadable modules that are registered with libcrypto
+
+3. libssl
+    实现了tls和dtls协议
+
+4. Applications
+    command tools
+    a. 密钥的生成以及检查
+    b. 证书的生成
+    c. SSL/TLS test tools
+    d. ASN.1 编码规范

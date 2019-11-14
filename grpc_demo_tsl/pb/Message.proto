@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package pb;
+
+message TestReQ {
+    string label = 1;
+    int32 Type = 2;
+    int64 reps = 3;
+}
+
+
+message ResponsE {
+    string msg = 1;
+    string status = 2;
+}
+
+service SendTestMsg {
+    rpc SendT(TestReQ) returns(stream ResponsE);
+}
