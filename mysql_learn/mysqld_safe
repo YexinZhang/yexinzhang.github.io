@@ -1,0 +1,23 @@
+MySQL 服务的启动脚本
+    用来启动一个mysqld server
+    mysqld_safe可以使用--mysqld, --mysqld-versio的命令行选项来指定server的名字
+    一旦有mysqld_safe不能解析的命令行选项，他会将其转发给mysqld
+
+    mysqld_safe 读取 [mysqld], [server], [mysqld_safe]字段的选项
+
+    Some Import command-line configuration
+        --basedir: Path to MySQL installation directory
+        --core-file-size: mysqld可以创建的核心文件的大小
+        --datadir:
+        --ledir: 指向server存在的目录
+        --log-error: 将错误日志写入指定的目录
+        --port
+        --open-files-limit: number of files that mysqld should be able to open
+        --plugin-dir
+        --user
+        --timezone
+        --syslog: 将错误信息写入syslog
+        --syslog-tag
+        --skip-syslog
+    
+    

@@ -1,0 +1,44 @@
+mysql_upgrade is program to check update things after upgrade the level of mysql_upgrade
+
+like, table incompatibility, repair
+
+[IMPORTANT]:
+    As of MySQL 5.7.12 the default --early-plugin-load value is empty, To load keyring_file plugin,
+you must use an explicit early-plugin-load option with a nonempty value.
+    --early-plugin-load="keyring_file;..." semicolon-separated list.
+    reason: InnoDB tablespace encryption requires the keyring_file plugin loaded before InnoDB initialization
+
+    You must Run mysql_upgrade with administrator privileges.
+
+[Note]
+    If you run the server with the disabled_storage_engines system variable to sop some engine.
+    mysql_upgrade might fail with an error like this:
+
+        "mysql_upgrade: [ERROR] 3161: Storage engine MyISAM is disabled
+         (Table creation is disallowed)."
+
+    为了解决这个问题，需要关掉 disabled_storage_engines 选项，然后运行mysql_upgrade, 接着在将 disabled_storage_engines恢复
+
+
+
+
+[Options]
+mysql_upgrade supports options can write in command line and file in [mysql_upgrade] and [client] scetion
+
+--upgrade-system-tables, mysql_upgrade processes all tables , Table checking might take a long time to complate.Each tables 
+    is locked and therefore unavailable to other sessions when it is being processed. It might take a long long time.
+
+--bind-address=IP_ADDRESS
+--character-sets-dir: 字符集安装目录
+--compress,-C: compress all information between client and server
+--debug
+--default-character-set=charset_name: Specify default character set
+--force
+--password, -p=PASSWORD
+--port
+--protocol={TCP|SOCKET|PIPE|MEMORY}
+--upgrade-system-tables: Upgrade only the system tables in the mysql schema, Don't upgrade user's schemas
+--user=USER_NAME,-u user_name:
+--verbose
+--skip-version-check.
+--write-binlog: 

@@ -1,0 +1,88 @@
+Overview of MySQL Programs
+- server
+    mysqld
+        The SQL daemon
+
+    mysqld_safe
+        A server startup scripts. mysqld attemp to start mysqld
+
+    mysql.server
+        A server startup scripts.  It invokes mysqld_safe to start the MySQL server.
+
+    mysql_multi
+        A server startup script that can start or stop multiple servers installed on the system.
+
+- Several programs perform setup operations during MySQL Installation or Upgrading
+    comp_err
+        compile error message files from the error source files
+
+    mysql_install_db:
+        这个程序会初始化默认的mysql数据目录，创建mysql数据库，初始化授权表以默认的权限，开启Innodb系统
+        表空间，这个程序通常只会执行一次，在系统上第一次安装mysql时.
+
+    mysql_plugin:
+        配置mysql server的插件
+
+    mysql_secure_installation
+        提高mysql安装的安全性
+    
+    mysql_ssl_rsa_setup:
+        创建SSL 证书和密钥文件以及RSA密钥对文件
+
+    mysql_tzinfo_to_sql:
+        该程序使用主机系统zoneinfo数据库的内容将时区表加载到mysql数据库中
+
+    mysql_upgrade
+        在MySQL升级完成之后使用次应用程序，他会更新授权表，并且检查表中的不兼容性，必要时修复
+
+
+- MySQL CLient:
+    mysql
+
+    mysqladmin:
+        creating or dropping databases, reloading the grant tables,flushing tables to disk
+        reopening log files. mysqladmin can also be used to retrieve version, process,ans status
+        information from the server.
+
+    mysqlcheck:
+        A table-maintenance client that checks, repairs, analyzes, and optimizes tables
+
+    mysqldump:
+
+    mysqlimport:
+        A client that imports text files into their respective tables using LOAD DATA.
+
+    mysqlpump:
+        客户端将MySQL数据库作为SQL转储到文件中
+
+    mysqlsh
+
+    mysqlshow:
+        A client that display the information about databases, tables, columns,and indexes
+    
+    mysqlslap:
+        旨在模拟MySQL服务器的客户端负载并报告每个阶段的时间的客户端。它就像多个客户端正在访问服务器一样工作。
+
+MySQL administrative and utility programs:
+    innochecksum
+        离线的InnoDB离线文件校验和实用程序。
+    
+    resolve_stack_dump
+        将数字堆栈跟踪转储为符号
+
+MySQL Client use following environment variables to communicate with the server.
+    MYSQL_UNIX_PORT: default unix socket file; used for connections to localhost
+    MYSQL_TCP_PORT: 
+    MYSQL_PWD
+    MYSQL_DEBUG
+    TMPDIR: THe directory where temporary tables and files are created
+    MYSQL_HOME: is a environment variables to specify THe mysql server-specify
+
+
+配置文件:
+    \b,\t,\n,\r,\\,\s
+    backspace,tab,newline, carriage return,backslash, space character
+
+
+--compress 支持压缩信息的客户端服务器连接, 但是会消耗双方的CPU负载
+对于主服务器/服务器复制，启用slave_compressed_protocol(boolean)系统变量可指定对从服务器到主服务器的连接使用压缩。

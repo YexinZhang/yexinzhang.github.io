@@ -1,0 +1,108 @@
+mysqldump:
+    The mysqldump client utility performs logical backups, producing a set of SQL statements that can
+be executed to reproduce the original database object definitions and table data.
+    generate output in CSV, other delimited text, or XML format.
+    LOCK table if --single-transaction not used.
+    privileges require least
+        dumped tables: SELECT
+        views: SHOW VIEW
+        trigger: TRIGGER 
+       
+[Note]
+    powershell> mysqldump [options] > dump.sql
+    will create a utf-16 encoding file
+    The UTF-16 is not permitted as a connection character set, so the dump file will not load correctly.
+
+    correct options:
+    powershell: mysqldump [options] --result-file=dump.sql
+
+[Performance and Scalability Considerations]
+
+    It is not intended as a fast or scalable solution for backing up substantial amounts of data.
+    it can retrieve the entire content from a table and buffer it in memory before dumping it. If U backup a barge
+table, you can use --quick option(or --opt --quick) --opt option(and hence --quick)is enabled by default. so, to enabled
+memory buffering use --skip-quick.
+
+Invocation Syntax
+
+    mysqldump [options] db_name [tb_name ...]
+    mysqldump [op] --databases db_name ...
+    mysqldump [op] --all-databases  
+
+Option Syntax
+
+    [mysqldump], [client], command line.
+
+    --add-locks:
+        用LOCK TABLES和UNLOCK TABLES语句包围每个表转储, 防止发生变化
+*   --all-databases 
+    --apply-slave-statements:
+        在CHANGE MASTER语句前，调用STOP SLAVE，在结束输出时调用START SLAVE.
+
+    --compact:
+        产生更紧凑的输出
+    --complate-insert:
+        使用包含列名的完整INSERT语句.
+
+
+    Connection Options:
+        specify how to connect to the mysql server.
+        --bind-address=ip_address
+        --compress, -C
+            compress all information between client and server if possible.
+*       --host=host_name, -h host_name
+        --password
+        --login-path=SOMESTR
+            读取mysql_config_editor指定的--login-path的登陆配置
+            mysql_config_editor set --login-path=SOMESTR --host=127.0.0.1 --user=root --password
+        --protocol={TCP|SOCKET|PIPE|MEMORY}
+
+
+    Option-FIle Options
+        --default-file=file_name
+
+    DDL Options
+        --add-drop-database:
+            Add DROP DATABASE statement before each CREATE DATABASE statement
+            该选项通常与--all-databases或--databases选项一起使用，因为除非指定了其中一个选项，
+            否则不会写入CREATE DATABASE语句。
+        --add-drop-table
+        --add-drop-trigger
+        --all-tablespaces, -Y:
+            将创建NDB表使用的任何表空间所需的所有SQL语句添加到表转储中。否则，此信息不包含在mysqldump的输出中。
+        --no-create-db:
+        --no-tablespaces, -y
+            该选项禁止在mysqldump的输出中显示所有CREATE LOGFILE GROUP和CREATE TABLESPACE语句。
+
+    Debug Options
+
+        --force, -f:
+            忽略所有错误，即使在表转储期间发生的错误也要忽略.
+        --verbose
+
+    Internationalization Options
+
+        --default-character-set=charset_name
+        --no-set-names, -N 
+        --set-charset=
+
+    Replication Options
+
+        --apply-slave-statements
+            add a STOP SLAVE statement before the CHANGE MASTER TO statement and a START SLAVE statement at the end of the output.
+            
+        --delete-master-logs:
+            after performing the dump operation, sending a PURGE_BINARY_LOGS statements to server,auto enabled
+
+        --dump-slave[=value]
+
+
+    Filtering Options
+        mysqldump ## [& & ..]  #:database %:tables
+        --all-databases
+        --databases ## ## ## .... 全部为库名称，
+            每个新数据库之前的输出中都包含CREATE DATABASE和USE语句。 
+            此选项可用于转储INFORMATION_SCHEMA和Performance_schema数据库，
+            即使使用--all-databases选项，这些数据库通常也不会转储
+        --events, -E
+

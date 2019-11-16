@@ -1,0 +1,93 @@
+mysql is a simple SQL shell with input line editing capabilities.
+It supports interactive and noninteractive use.
+
+--quick 
+option force mysql to retrieve results from the server a row at a time rather than
+retrieving the entire result set and buffering it in memory before displaying it.
+
+
+[Client Logging]
+The mysql client can do these types of logging for statements executed interactively:
+    
+    On Unix, MySQL writes the statements to a history file, by default, it named .mysql_history 
+in our homedir. If wang to specify a values, can use Env MYSQL_HISTFILE.
+
+How Logging occurs
+只有在交互模式下才会记录，
+如果语句与“忽略”列表中的任何模式匹配，则将忽略这些语句并将其记录下来。
+mysql分别记录每个不可忽略的非空语句行。
+多行写的一条语句，mysql会将其转换为一行语句，并且加上delimiter
+
+mysql ignore list
+    partten to match some statements, default: "*IDENTIFYED*:*PASSWORD*" 
+    ? 可以匹配但个字符
+    * 可以匹配零个或者多个字符
+    这个模式可以通过命令行参数--histignore 或者 设置MYSQL_HISTIGNORE ENV. cmd line的优先级更高
+    该值应该是一个或多个用冒号分隔的模式的列表，这些模式会附加到默认模式列表中。
+
+保护MySQL的命令历史
+    1. set MYSQL_HISTFILE=/dev/null
+    2. 创建一个soft link like: ln -s /dev/null ~/.mysql_history
+    3. 关闭命令历史访问:
+        --histignore="*"  To ignore all new input lines 
+[SysLog Logging characteristics]
+
+--syslog
+level: LOG_INFO
+messages size < 1024 bytes
+    messages consist of the identifier MysqlClient followed by these values:
+    SYSTEM_USER: OS USER NAME
+    MYSQL_USER:
+    CONNECTION_ID:
+    DB_SERVER:
+    DB:
+    QUERY: The text of the logged statement.
+example:
+    Mar  7 12:39:25 myhost MysqlClient[20824]:
+        SYSTEM_USER:'oscar', MYSQL_USER:'my_oscar', CONNECTION_ID:23,
+        DB_SERVER:'127.0.0.1', DB:'--', QUERY:'USE test;'
+
+
+[mysql client help]
+
+mysql> help contents 
+    see a list of the help categories(分类):
+
+[executing SQL statements from a text file]
+
+shell> mysql db_name < text_file
+mysql> source file_name
+
+
+[mysql client tip]
+safe_updates
+    --safe-updates : 在使用update和delete是必须指定where或者limit选项.
+        sql_safe_updates, sql_select_imit=###, max_join_size=###
+    if in options file, I can Use --skip-safe-updates on the command line to override it
+
+
+Disableling mysql Auto-connect
+--skip-reconnect
+
+如果mysql客户端与服务器在发送语句时断开了连接，客户端将尝试着重新连接到服务器并且在一次发送语句。
+然而，即使重新连接了，上个会话连接中的用户变量，会话变量将会消失，这会造成相当大的危险。
+Like:
+    mysql> SET @a=1;
+    Query OK, 0 rows affected (0.05 sec)
+
+    mysql> INSERT INTO t VALUES(@a);
+    ERROR 2006: MySQL server has gone away
+    No connection. Trying to reconnect...
+    Connection id:    1
+    Current database: test
+
+    Query OK, 1 row affected (1.30 sec)
+
+    mysql> SELECT * FROM t;
+    +------+
+    | a    |
+    +------+
+    | NULL |
+    +------+
+    1 row in set (0.05 sec)
+    The @a user variable has been lost with the connection, and The new conn is undifined.

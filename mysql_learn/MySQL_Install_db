@@ -1,0 +1,22 @@
+自mysql 5.7.6 开始，不推荐使用此程序，因为相关功能已经集成到mysqld当中
+
+mysqld --initialized or --initialize-insecure option.
+
+它初始化mysql数据目录，并且创建系统表
+初始化管理InnoDB表所需要的系统表空间和相关数据结构
+安装 sys schema
+
+--verbose
+--datadir: 指定文件生成的目录下面
+
+    ca.pem
+    ca-key.pem
+    server-cert.pem
+    server-key.pem
+    client-cert.pem
+    client-key.pem
+    private_key.pem
+    public_key.pem
+
+    
+
