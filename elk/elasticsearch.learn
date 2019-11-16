@@ -1,0 +1,15 @@
+Elasticsearch
+
+    search section:
+        took: the search time in milliseconds
+        time_out: y/n
+        _shards: 成功，失败，跳过以及一共搜索了多少个分片，
+    
+important elasticsearch configuration
+
+    path: 数据以及日志的存储路径
+        logs: /var/log/...
+        data: /var/lib/elasticsearch
+    cluster.name: 加入集群的名称
+    node.name: 节点的名称
+    network.host: 绑定的网络地址

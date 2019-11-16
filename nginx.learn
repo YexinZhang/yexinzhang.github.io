@@ -1,0 +1,16 @@
+Nginx 
+
+    nginx has one master process and several worker process. master process read and evaluate configfile
+and maintain worker processes.Worker real processing requests.
+    nginx -s SIGNAL 
+        stop, quit, reload, reopen
+
+        reload:
+            master process receives the reload signal, It will check the new config's syntax and tries to
+        apply the configfile provided in it. If this is success, the master process starts new worker processes
+        and send messages to old worker process,request them to shutdown, if not success, master process will 
+        roll back the changes and continue use old worker processes with the old configfile.Old processes receives
+         a stop signal, Stop receives new requests and continue to handle the current requests until all such 
+        requests are serviced, After that the old process will exit.
+
+        
