@@ -1,0 +1,17 @@
+[program: {{ PNAME }}]
+autostart = true
+autorestart = unexpected
+command = bash -c 'exec /usr/bin/docker run --rm --network host \
+   --volume /srv/sites/mtl/{{ PNAME }}/diffcode:/code  \
+   --volume /srv/logs/{{ PNAME }}:/logs \
+   --name {{ PNAME }} \
+   {{ PNAME }}:latest'
+stopsignal = QUIT
+stopwaitsecs = 300
+redirect_stderr = false
+stdout_logfile = /srv/logs/{{ PNAME }}/out_{{PNAME}}.log
+stdout_logfile_backups = 5
+stdout_logfile_maxbytes = 20MB
+user = root
+startsecs = 5
+startretries = 3

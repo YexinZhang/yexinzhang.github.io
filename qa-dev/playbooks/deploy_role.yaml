@@ -1,0 +1,7 @@
+---
+
+- name: deploy a role
+  hosts: all
+  remote_user: root
+  roles:
+    - { role: supervisor }

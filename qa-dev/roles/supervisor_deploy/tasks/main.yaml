@@ -1,0 +1,12 @@
+---
+
+- name: Create Project Config File
+  template:
+    src: "{{ PNAME }}/{{ PNAME }}.conf.j2"
+    dest: "/etc/supervisor/conf.d/{{ PNAME }}.conf"
+    mode: u=rw,g=rw,o=
+    backup: yes
+
+- name: reread and update
+  shell: >
+    supervisorctl reread && supervisorctl update
