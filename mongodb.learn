@@ -109,5 +109,53 @@ query Document
         )
         SELECT * FROM inventory WHERE status = "D" AND qty < 40;
 
-        
+    嵌套结构的查询      
+        cursor, err := coll.Find(
+        context.Background(),
+        bson.D{
+            {"size", bson.D{
+                {"w", 21},
+                {"h", 14},
+                {"uom", "cm"},
+            }},
+        })
+        嵌套结构在查询的时候必须要保证value要完全一致，并且key的查询顺序也要和原文档遗址
+
+        cur, err := doc1.Find(ctx,bson.D{
+            {"size.h",10},
+        })
+        查询嵌套的时候，可以使用dot notation来查询更下一级的字段
+
+
+    查询数组
     
+        cursor, err := coll.Find(
+            context.Background(),
+            bson.D{{"tags", bson.A{"red", "blank"}}},
+        )
+        这个样子的查询只会查询tags 字段包含red和blank的doc，并且必须是red在前，blank在后才行
+
+        如果想查找，包含了red和blank，但是也可以有其他元素的数组时，应该使用"$all"
+
+        cur , _ := doc1.Find(ctx,bson.D{
+            {"tags",bson.D{
+                {"$all",bson.A{"red"}},
+            }},
+        })
+
+        查询数组中的单个值是否满足给予的条件
+        cur , _ := doc1.Find(ctx,bson.D{
+            {"dim_cm",bson.D{
+                {"$gt",26},
+                {"$lt",50},
+            }},
+	    })
+        查找 dim_cm中的值包含大于26的doc
+
+        cur , _ := doc1.Find(ctx,bson.D{
+            {"dim_cm.0",bson.D{
+                {"$gt",22},
+                {"$lt",30},
+            }},
+	    })
+        使用数组中的元素序号， 进行查找
