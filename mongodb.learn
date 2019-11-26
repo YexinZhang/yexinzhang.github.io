@@ -1,0 +1,113 @@
+MongoDB
+
+db --> collection --> document
+
+db.users.insertOne(         ----->collection
+    {
+        name: "Ding Deng", |
+        age: 26,           |----> Document
+        status: "Ready"    |
+    }
+)
+
+Documents:
+
+Documents have the following restrictions on field names:
+
+    _id is reserved for used as a primary key; value must unique; may be of any type other than array
+    Field Can not contain the null character.
+    Top-level Field Cannot start with the $ character
+    
+
+Mongo shell Data Type:
+
+    Date类型
+        Date()
+        ISODate()
+
+    ObjectId类型
+        new ObjectId
+    
+    NumberLong类型:
+        THe mongo shell treats all numbers as floating-point values by default.
+        mongo shell provides NumberLong() wrapper to handle 64-bits interage.
+
+        NumberLong 在使用$inc增加时，会转换成floating-point value.
+
+        > db.collection.findOne({_id:10})
+             { "_id" : 10, "calc" : NumberLong("2555555000005") }
+
+        > db.collection.updateOne({_id:10},{ $inc:{calc:5}}) //修改
+             { "acknowledged" : true, "matchedCount" : 1, "modifiedCount" : 1 }
+
+        > db.collection.findOne({_id:10})
+             { "_id" : 10, "calc" : 2555555000010 }
+
+    NumberInt类型
+        --> 32-bits interage transfor wrapper.
+
+    NumberDecimal类型(Decimal: 小数)
+
+
+
+MongoDB CURD
+
+Insert Documents
+    db.collection.insertOne()
+    db.collection.insertMany()
+
+    Read Operations
+    read Operations retrieves(检索) documents from a collection
+
+        db.mycoll.find(          
+        db.mycoll.findOne(            
+        db.mycoll.findOneAndReplace(
+        db.mycoll.findAndModify(      
+        db.mycoll.findOneAndDelete(   
+        db.mycoll.findOneAndUpdate(
+
+
+query Document
+
+    SELECT ALL Documents in a collection
+        mycoll.Find(
+             ctx,
+            bson.D{},
+        )
+        select * from inventory
+    
+    Specify Equality Condition
+
+        mycoll.Find(
+            ctx,
+            bson.D{{"status","D"}}
+        )
+        SELECT * FROM inventory WHERE status = "D";
+
+    Specify Condition Using Query Operators
+
+        mycoll.Find(
+            ctx,
+            bson.D{
+                {"status",bson.D{
+                    {"$in", bson.A{"A","B","D"}}
+                }
+            }}
+        )
+        SELECT * FROM inventory WHERE status in ("A","D","B");
+    
+    Specify AND Conditions
+
+        mycoll.Find(
+            ctx,
+            bson.D{
+                {"status","D"},
+                {"qty",bson.D{
+                    {"$lt",40},
+                }}
+            }
+        )
+        SELECT * FROM inventory WHERE status = "D" AND qty < 40;
+
+        
+    
