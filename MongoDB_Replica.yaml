@@ -1,0 +1,137 @@
+---
+
+Replica Set Primary
+ 
+
+主节点只有一个，主节点接收客户端的写操作， 并且将操作记录在主节点的oplog，从节点从主节点的oplog
+中进行复制，并且应用日志中的操作。
+在默认情况之下，副本集的读操作依然在主节点上完成.
+
+Replica Set Secondary
+	- priority 0 member is a member that cannot become primary and cannot trigger elections
+	- hidden Replica set Member 
+	  require priority 0 and cannot be primary
+	- delayed replica set member (延迟的副本集，可帮助恢复错误)
+	  must priority 0 
+	  shoule be hidden member
+	  do vote(投票) in elections for primary, if members[n].votes is set to 1.
+		Delayed members copy and apply operations from the source oplog on a delay.
+	  When choosing the amount of delay, consider the amount of delay.
+		* must be equal to or greater than your expected(预期的) maintance(维护) windows durations.
+		* must be smaller than the capacity(容量) of the oplog.
+	delayed configuration
+        {
+          "_id": <num>,
+          "host": <hostname:port>,
+          "priority": 0,
+          "slaveDelay": <seconds>,
+          "hidden": true
+        }
+
+Replica Set Arbiter
+
+  这个仲裁节点不含有副本集数据, 并且不会成为主节点
+  starting on 3.6  arbiter is a priority 0 member
+  仲裁程序最好单独在没有主节点或者从节点的机器上启动
+
+Replica Set Elections 
+Retryable Writes
+Rollbacks During Replica Set Failover (副本集故障转移期间的回滚)
+
+
+Replica Set oplog
+
+ 操作日志是一个特殊的，有上限的集合，该记录保持所有的修改存储在数据库中的数据的操作的滚动记录
+ 所有的在oplog的操作都是幂等的
+
+ oplog size:
+   for unix and windows:
+     Storage Engine	             Default Oplog Size	    Lower Bound	 Upper Bound
+     In-Memory Storage Engine	 5% of physical memory	50 MB	     50 GB
+     WiredTiger Storage Engine	 5% of free disk space	990 MB	     50 GB
+   
+   In most cases, the default is sufficient
+
+   Before mongod creates an oplog. you can specify its size with the oplogSizeMB option.
+   在开启之后修改oplog大小，通过replSetResizeOplog
+   replSetResizeOplog enables you to resize oplog dynamically without restart mongod process
+
+ The following workload need a larger oplog size
+   1. Updates to Multiple Documents at once:
+     操作日志必须将多次更新转换为单独的操作，以保持幂等性。
+   2. 删除等于插入的数据量:
+     如果删除的数目大致等于添加的数目，磁盘虽然不会太多增长，但是操作日志会很大
+   3. 大量的就地更新:
+     如果工作量的很大一部分是不增加文档大小的更新，则数据库会记录大量操作，但不会更改磁盘上的数据量。
+     
+
+  Oplog Status:
+    rs.printReplicationInfo() method
+    db.getReplicationInfo() 
+  
+  Replication Lag and FLow COntrol:
+    Starting in MongoDB 4.2, administator can limit the rate at which the primary applies its
+     writes with the goal of keeping the majority committed lag unser a configurable maxmum value.
+    flowControlTargetLagSeconds.
+    为了启用流控制，副本集/分片群集必须具有：featureCompatibilityVersion（FCV）为4.2且启用了读
+    取关注多数。也就是说，如果FCV不是4.2或禁用了大多数读取关注，则启用的流控制无效。
+
+
+
+
+Replica Set Data Synchronization:
+  
+  MongoDB uses two forms of data synchroization:
+    初始同步以使用完整数据集填充新成员，并进行复制以将正在进行的更改应用于整个数据集。
+
+  Initial Sync:
+    Initial sync copies all the data from one member of the replica set to another member.
+
+    Process:
+      When I perform an initial sync, MongoDB:
+        1. clones all databases except(除了) the local database.To clone, the mongod scans
+           every collection in each source database and insert all data into its own copies
+           of these collections.
+        2. Applies all changes to the data set. Using the oplog from the source, the mongod 
+           updates its data set to reflect the current state of the replica set.
+        When the initial sync finishes, The member transitions from STARTUP2 to SECONDARY.
+
+  Replication:
+    Secondary members replicate data continuously(连续的) after the initial sync.
+    次要成员从其同步源复制操作日志，并在异步过程中应用这些操作
+    辅助节点可以根据ping时间和其他成员复制状态的变化，根据需要自动从源更改其同步。oo
+    次要成员避免从延迟的成员和隐藏的成员进行同步。
+    如果辅助成员的members [n] .buildIndexes设置为true，则只能从buildIndexes为true的其他成员同步。
+    除非其他同步限制，否则buildIndexes为false的成员可以与任何其他成员进行同步。默认情况下，buildIndexes为true。
+
+  multithreaded Replication: (多线程复制)
+    MongoDB按文档ID（WiredTiger）对批次进行分组，并同时使用不同的线程应用每组操作
+    MongoDB始终以原始写入顺序将写入操作应用于给定文档。
+    在应用批处理时，MongoDB会阻止所有读取操作。结果，辅助读取查询将永远无法返回反映主数据库上不存在的状态的数据。
+  
+  FLow COntrol:
+    从MongoDB 4.2开始，管理员可以限制主数据库应用其写入的速率，以将大多数承诺滞后时间保持在可配置的最大值以下。flowControlTargetLagSeconds.
+
+
+
+Replica Set Deployment Architectures:
+
+  Strategies(策略):
+    
+    Determine the Number of Members:
+      Add members in a replica set according to these strategies.
+
+    Maximum number of voting Members:
+      A replica set can have up to 50 members, but only 7 voting members.
+      如果副本集已经含有7个投票成员，则新加入的成员必须是非投票成员
+    Deploy an Odd Number of Members:
+      部署奇数个成员
+
+      #  从版本4.2.1开始，rs.status（）返回副本集的多数投票计数。
+
+    Use Hidden and Delayed Members for dedicated(专门的，专用) Function:
+      such as backup and reporting.
+
+
+    Load balance On read-heavy Deployment:
+      In a deployment with very high rea traffic, you can improve read throughput by distributing reads to secondary members.

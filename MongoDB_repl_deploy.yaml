@@ -1,0 +1,19 @@
+---
+
+- Deploy a Replica Set:
+
+  Architecture:
+    In production, deploy each member of the replica  set to its own machine and if possible bind the standrad poret 27017
+  Hostnames:
+    TIP: 
+    When possible, Use logical DNS hostname instead of and ip address.
+
+  IP Binding:
+    Use the bind_ip option to ensure that mongodb listens for connections from application on configuration address.
+  
+  Connectivity:
+    - Establish a virtual private network.
+    - Configure a access control presents connections from unknown clients to replica set
+    - configure networking and firewall rules.
+    Ensure that each member of a replica set is accessible by way of resolvele DNS or hostname, you should either configure your DNS names appropriately(适当地) or set up /etc/hosts
+

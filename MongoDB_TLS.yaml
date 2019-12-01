@@ -1,0 +1,125 @@
+Configure mongod With TLS/SSL
+
+
+[tls]
+
+This Document helps me to configure a new MongoDB instance to support TLS/SSL
+
+  NOTE:
+	*Starting in version 4.0, mongodb disables support for TLS 1.0 encryption on systems where
+	 TLS 1.1+ is avilable.
+	*MongoDB's TLS/SSL encryption only allows the sue of storing TLS/SSL ciphers with minmum of
+	 128-bit key length for all connections.
+
+
+Prerequisites(先决条件)
+
+create sign certificate key pem file
+
+  首先生成自签证书
+  a. openssl req -newkey rsa:4096 -new -x509 -days 3600 -nodes -keyout mongodb.key -out mongodb.crt
+  将证书和密钥合并
+  b  cat mongodb.key mongodb.crt > mongodb.pem
+
+
+Certificate Authorities
+
+  mongodb use valid certificates generated and signed by a single certificate authority. Or signal sign.
+
+
+Procedures(USing net.tls Settings)
+
+Set Up mongod with TLS/SSL Certificate and key
+
+  1. mongod presents its certificate key file to client.
+
+     mongod do not require a cert key file from client to verify the client's identity
+	 
+	 using net.tls settings
+
+	 net.tls.mode:
+       requireTLS: The server uses and accepts only TLS encrypted connections.
+       disabled: do not use TLS
+       allowTLS: Connections between servers do not use TLS. For incoming connections, the server accepts both TLS and non-TLS.
+       preferTLS: Connections between servers use TLS. For incoming connections, the server accepts both TLS and non-TLS.
+
+     net.tls.certificateKeyFile: /path/to/mongodb.pem
+	    
+     net.tls.certificateKeyFilePassword: 如果证书加密，则需要添加证书密码
+       在所有情况下，mongos或mongod都会从所有日志记录和报告输出中删除密码。
+
+     IN configure file
+     net:
+       tls:
+         mode: requireTLS
+         certificateKeyFile: /etc/ssl/mongodb.pem 
+    客户端访问
+     mongo --tls --host hostname.domain.name -tlsCAFile /path/to/mongodb.pem
+      (这个名称要和证书中的名称保持一致，否则会认证失败)
+
+
+
+  2. Set up mongod with client cert validation
+     
+     * mongod presents its certificate key file to client for verification
+     * mongod requires a certificate key file from the client verify the client's identity 
+
+         need:
+           net.tls.mode
+           net.tls.certificateKeyFIle
+           net.tls.CAFile (设置用户端证书的文件路径)
+     net:
+       tls:
+         mode: requireTLS
+         certificateKeyFile: /etc/ssl/mongodb.pem
+         CAFile: /etc/ssl/caToValidateClientCertificates.pem
+
+     mongo --tls --host hostname.domain.com --tlsCertificateKeyFile /path/to/mongodb.pem --tlsCAFile /etc/ssl/caToValidateServerCertificates.pem
+
+
+  3. 阻止用户连接的吊销证书
+     为了防止具有吊销证书的客户端连接，请将net.tls.CRLFile设置为包含吊销证书的文件。
+      net:
+        tls:
+          mode: requireTLS
+          certificateKeyFile: /etc/ssl/mongodb.pem
+          CAFile: /etc/ssl/caToValidateClientCertificates.pem
+          CRLFile: /etc/ssl/revokedCertificates.pem
+
+
+
+  4. 不提供证书的客户端实行绕过tls连接
+      net.tls.allowConnectionsWithoutCertificates: true
+      A mongod running with aboving setting allow connection from:
+        clients that do not present certificate.
+        clients that present a valid certificate.
+      但是所有连进来的连接， 包括为使用客户端证书的连接，均采用tls/ssl加密.
+
+  5. Disallow Protocols
+     disabledProtocols: TLS1_0,TLS1_1 禁用部分协议
+
+
+
+
+[SSL]
+
+Set Up mongod and mongos with TLS/SSL Certificate and Key
+
+     net.ssl.mode: requireSSL
+     net.ssl.PEMKeyFile: 
+     net.ssl.PEMKeyPassword:
+
+with client certificate
+
+     net.ssl.CAFile:
+
+
+
+
+
+
+
+
+
+
+
