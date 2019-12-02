@@ -1,0 +1,25 @@
+Resync a member of a replica set
+
+
+Proceduers:
+    
+  - Automatically Sync a Member:
+    # Warning: During initial sync, mongod removes the contents of the dbpath
+
+
+Read Preference Mode.
+
+primary:
+    全部到primary读取
+
+primaryPreferred:
+    如果primary不可用，才会到secondary读取
+
+secondary:
+    只会到secondary读取
+
+secondaryPreferred:
+    先去secondary读取数据，如果secondary不可用，才回到primary读取数据
+
+nearest:
+    无论成员类型如何，从副本集中的成员读取的操作都具有最小的网络延迟。

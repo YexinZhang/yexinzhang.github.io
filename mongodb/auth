@@ -19,3 +19,13 @@ mongod --auth 开启认证模式
 
 
 Create additional users as needed for your deployment
+
+
+
+
+设置TLS
+
+    配置文件 
+    net.tls.mode: requireTLS [disabled, allowTLS, preferTLS]
+    net.tls.certificateKeyFile: 这个指向cert和key同时存在的文件夹
+    

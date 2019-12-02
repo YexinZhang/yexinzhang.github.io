@@ -11,9 +11,140 @@
   IP Binding:
     Use the bind_ip option to ensure that mongodb listens for connections from application on configuration address.
   
-  Connectivity:
+Connectivity:
     - Establish a virtual private network.
     - Configure a access control presents connections from unknown clients to replica set
     - configure networking and firewall rules.
     Ensure that each member of a replica set is accessible by way of resolvele DNS or hostname, you should either configure your DNS names appropriately(适当地) or set up /etc/hosts
 
+
+- Adjust Priority for replica set member: 
+    default primary is 1, value range 0-1000
+    Considerations:
+      hidden and delayed priority is must 0
+      starting in mongodb 3.6 arbiters have priority 0, if not 0, the mongod reconfigure to 0.
+    Reconfiguring priority can forece the current primary to step down, leading to an election.
+    before a election, the primary closes all open connections from clients.
+
+    Procedure:
+      config = rs.conf()
+      根据dot 传递运算 修改 Bson 字段的值 
+      e.g. 
+        sr0:PRIMARY> rs.conf()
+        {
+          "_id" : "sr0",
+          "version" : 2,
+          "protocolVersion" : NumberLong(1),
+          "writeConcernMajorityJournalDefault" : true,
+          "members" : [
+            {
+              "_id" : 0,
+              "host" : "mongo-primary.zyxasr.com:27017",
+              "arbiterOnly" : false,
+              "buildIndexes" : true,
+              "hidden" : false,
+              "priority" : 0.5,
+              "tags" : {
+                
+              },
+              "slaveDelay" : NumberLong(0),
+              "votes" : 1
+            },
+            {
+              "_id" : 1,
+              "host" : "mongo-sec-1.zyxasr.com:27017",
+              "arbiterOnly" : false,
+              "buildIndexes" : true,
+              "hidden" : false,
+              "priority" : 1,
+              "tags" : {
+                
+              },
+              "slaveDelay" : NumberLong(0),
+              "votes" : 1
+            },
+            {
+              "_id" : 2,
+              "host" : "mongo-sec-2.zyxasr.com:27017",
+              "arbiterOnly" : false,
+              "buildIndexes" : true,
+              "hidden" : false,
+              "priority" : 1,
+              "tags" : {
+                
+              },
+              "slaveDelay" : NumberLong(0),
+              "votes" : 1
+            }
+          ],
+          "settings" : {
+            "chainingAllowed" : true,
+            "heartbeatIntervalMillis" : 2000,
+            "heartbeatTimeoutSecs" : 10,
+            "electionTimeoutMillis" : 10000,
+            "catchUpTimeoutMillis" : -1,
+            "catchUpTakeoverDelayMillis" : 30000,
+            "getLastErrorModes" : {
+              
+            },
+            "getLastErrorDefaults" : {
+              "w" : 1,
+              "wtimeout" : 0
+            },
+            "replicaSetId" : ObjectId("5de46ce0d1127fa9ebcaa125")
+          }
+        }
+    我们可以根据member在 members数组中的索引位置 修改其属性，比如index为0的primary member
+
+    config.members[0].priority = 0.5
+    修改完成之后， 我们重新载入config. 即可完成会sr0状态的修改
+    rs.reconf(config)
+
+
+Configure a Delayed Replica Set Member.
+
+  hidden: true
+  priority: 0
+  slaveDelay: <seconds>
+
+  [IMPORTANT]
+    The length of the secondary members[n].slaveDelay must fit within the window of the oplog.
+    if the oplog is shorter than the members[n].slaveDelay window, the delayed member cannot successfully
+    replicate operations.
+
+
+
+
+Perform Maintenance on Replica set Members:
+
+  Procedure:
+    For each member of a replica set. Starting with a secondary member, perform the following sequence
+  of events, ending with the primary.
+    - Restart the mongod instance as a standalone.
+    - Perform the task on the standalone instance.
+    - Restart the mongod instance as a member of the replca set.
+
+  1. Stop a secondary.
+    - In mongo shell:
+      db.shutdownServer();
+  2. restart the secondary as a standalone on a different port.
+    - Configuration File
+      1. comment out the replication.replSetName
+      2. change the net.port
+      3. set parameter disableLogicalSessionCacheRefresh to true
+  3. Perform maintenance operations on the secondary.
+
+  4. Restart the mongod as a replica set member
+
+
+Force a Member to be Primary Usiong Database Commands
+  current status:
+    mdb0.example.net - the current primary.
+    mdb1.example.net - a secondary.
+    mdb2.example.net - a secondary .
+
+  1. In mongo shell, run rs.status() to ensure replica running as expected.
+  2. In mdb2 mongod shell, run rs.freeze(120), freeze mdb2 so that it does not attempt to become primary 120s
+  3. In mdb0 shell, freeze(120) && step down this instance Using db.stepDwon(120).
+
+  mdb1 becomes primary
