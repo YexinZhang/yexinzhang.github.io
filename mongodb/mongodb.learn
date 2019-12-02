@@ -159,3 +159,61 @@ query Document
             }},
 	    })
         使用数组中的元素序号， 进行查找
+
+    仅返回_id字段和指定字段
+        需要添加选项，并且将需要投影（显示）的字段的值设置为1
+            projection := bson.D{ -----> 设置指定字段
+                {"item",1},
+                {"status",1},
+            }
+            cur,_ := newcoll.Find(
+                ctx,
+                bson.D{{"status","A"}},
+                options.Find().SetProjection(projection),
+            )
+            SELECT _id,status,item FROM inventory WHERE status = 'A';
+        输出会自动天加上_id
+        {"_id": {"$oid":"5ddde2d8255ea8d4fdc78e06"},"item": "journal","status": "A"}
+        {"_id": {"$oid":"5ddde2d8255ea8d4fdc78e07"},"item": "notebook","status": "A"}
+        {"_id": {"$oid":"5ddde2d8255ea8d4fdc78e0a"},"item": "postcard","status": "A"}
+
+        如果不想显示_id字段，我们可以在projection 中jiang _id的值设置为0.
+        [注意]: 指定显示字段不能和指定不显示某些字段混用
+            like    {"item", 1},
+                    {"size.uom", 1}, 
+
+    返回嵌入式文档中的指定字段 
+
+        projection = bson.D{
+            {"item", 1},
+            {"status", 1},
+            {"size.uom", 1},
+        }
+
+    nil 查询 
+        {"item", nil}
+        会返回item的值为nil 或者不包含item字段的documents
+
+    Type Check:
+        BsonType:
+
+        cur, _ := newcoll.Find(
+            ctx,
+            bson.D{
+                {"item", bson.D{
+                    {"$type",10},
+                }},
+            },
+        )
+        {"_id": {"$numberInt":"1"},"item": null}
+    exists Check
+        cur, _ := newcoll.Find(
+            ctx,
+            bson.D{
+                {"item", bson.D{
+                    {"$exists",false},
+                }},
+            },
+        )
+        exists => false 返回item不存在的document
+        +=> true 返回存在item字段的documents

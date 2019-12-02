@@ -1,0 +1,71 @@
+Data Model Design
+
+Embadded Data Models
+Normalized Data Models
+
+嵌入式的数据模型允许app将有关联的一些信息存储在相同的数据库中
+
+Model ONE-2-ONE :
+    {
+        _id: "joe",
+        name: "Joe Bookreader",
+        address: {
+                        street: "123 Fake Street",
+                        city: "Faketon",
+                        state: "MA",
+                        zip: "12345"
+                    }
+    }
+
+Model ONT-2-Many
+    {
+    _id: "joe",
+    name: "Joe Bookreader",
+    addresses: [
+                    {
+                        street: "123 Fake Street",
+                        city: "Faketon",
+                        state: "MA",
+                        zip: "12345"
+                    },
+                    {
+                        street: "1 Some Other Street",
+                        city: "Boston",
+                        state: "MA",
+                        zip: "12345"
+                    }
+                ]
+    }
+
+一般而言， 嵌入式的数据类型提供了更好的性能和读取操作。 也是的在单个原子写入操作更新相关数据成为了可能
+
+
+Normalized Data Model
+
+    Normalized Model describe relationships using references(引用) between document
+
+
+
+Operational Factors
+
+Atomicity
+    在Mongo中，写操作是但个文档级别的原子操作，即使该操作修改了但个文档中的多个嵌入式文档
+    当一个写操作作用于多个Documents时，对于每个Document来说，写操作是原子性的
+
+Embadded Data Model
+
+
+Sharding
+
+    分片允许用户在数据库中对集合进行分区，以将集合的文档分布在许多mongod实例或分片中。
+
+Indexes
+    使用索引可以提高常见查询的性能。在查询中经常出现的字段以及返回排序结果的所有操作上建立索引。
+    mongoDB automaticaly creates a unique index on the _id fields.
+    Important:
+        Each index requires at least 8kB of data space.
+        每次写入操作都会更改index， 所以可能会带来性能上的负提升, 所与对于写请求高的collection 不建议
+        Indexes do not affect un-indexed read operations.
+
+
+

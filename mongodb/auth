@@ -1,0 +1,21 @@
+mongod --auth 开启认证模式
+
+
+创建admin用户， mongo的用户作用于数据库上，他可以有多个角色，每个角色对数据库的可操作权限不同
+1. 选择要添加用户的数据库
+    use admin
+   From The mongo shell, add a user with the userAdminAnyDatabase role in the admin database.
+2. 创建user.
+    db.createUser(
+        {
+            user: "myUserAdmin",
+            pwd: passwordPrompt(),
+            roles: [ { role: "userAdminAnyDatabase" }, db: "admin", "readWriteAnyDatabase" ]
+        }
+    )
+
+1. mongo --authenticationDatabase "DATABASE_NAME" -u "USER" -p
+2. db.auth("USERNAME", passwordPrompt())
+
+
+Create additional users as needed for your deployment
