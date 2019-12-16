@@ -1,0 +1,18 @@
+---
+
+------ ["sharded CLuster"]:
+
+- shard: 
+each shard contains a subnet of the sharded data. Each shard can be deployed as replica set
+- mongos:
+The mongos acts as a query router, providing an interface between client and sharded cluster
+- config servers:
+store metadata and config settings for the cluster. As of v3.4, config server must be deployed
+a replica set (CSRS)
+
+MongoDB shards data at the collection level.
+
+
+--- ["Shard Keys"]
+
+

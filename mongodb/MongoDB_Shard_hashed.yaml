@@ -1,0 +1,99 @@
+Deploy Sharded Cluster With Hashed Sharding
+
+  Create the Config Server Replica Set.
+
+  1. start config server 
+    storage:
+      dbpath: /data/mongo/shard
+    sharding:
+      clusterRole: configsvr // 集群在shard cluster中的身份
+    replication:
+      replSetName: <replica set name> 比如config 
+        // 这里的replicaSetName 和shard集群的replname不一样
+      # 这只是为了 config服务的集群
+    net:
+      port: 27019 自己设定 不要和 shard集群冲突即可
+      bindIp: localhost,<hostname(s)|ip address(es)>
+    mongod --configsvr --replSet <replica set name> --dbpath <path> --bind_ip localhost
+
+  2. connect to config and initate the replica set
+
+      rs.initiate(
+        {
+          _id: "config",
+          configsvr: true,
+          members: [
+            { _id : 0, host : "cfg1.example.net:27019" },
+            { _id : 1, host : "cfg2.example.net:27019" },
+            { _id : 2, host : "cfg3.example.net:27019" }
+          ]
+        }
+      )    
+
+  Create a shard replica Set
+
+  1. Deploy replica shard set
+      sharding:
+         clusterRole: shardsvr
+      replication:
+         replSetName: shard_0 
+      net:
+         bindIp: localhost,<ip address>
+  2. init
+      rs.initiate(
+        {
+          _id : shard_0,
+          members: [
+            { _id : 0, host : "s1-mongo1.example.net:27018" },
+            { _id : 1, host : "s1-mongo2.example.net:27018" },
+            { _id : 2, host : "s1-mongo3.example.net:27018" }
+          ]
+        }
+      )
+
+  Connect a mongos to the Sharded Cluster.
+    mongos 是用来充当mongod的服务器的，他用来接受client的连接，并且路由到正确的shard
+    mongos 启动通过mongos命令，而不是mongod命令
+
+  1. start a mongos:
+    Configuration File
+    sharding:
+      configDB: <configReplSetName>/cfg1.example.net:27019,cfg2.example.net:27019
+      # configReplSetName: 可以指向config server的replica set 名称/后面加上地址
+    net:
+      port: 27017
+      bindIp: localhost,<hostname(s)|ip address(es)>
+    mongos --config <path-to-config>
+
+    Command
+      mongos --configdb <configReplSetName>/cfg1.example.net:27019,cfg2.example.net:27019 --bind_ip localhost,<hostname(s)|ip address(es)>
+
+
+---------------------------------------------------------
+
+Add shards to the CLuster
+
+In the mongo shell connected to the mongos, Continue to next procedure to add shards to the cluster.
+
+ 1. Add shards to the CLuster
+    sh.addShard("<shardreplSetName/shard_1.zyxasr.com:port>")
+    ...
+    sh.addShard("<shardreplSetName/shard_n.zyxasr.com:port>")
+
+ 2. Enable sharding for database
+    sh.enableSharding("<database>")
+ 
+Shard a Collection using Hashed Sharding
+
+  From the mongo shell, use the sh.shardCollection() method to shard a collection
+  如果需要shard 的collection 本身存在数据，则需要先创建Index
+
+  db.collection.createIndex({name:1})
+  db.collection.ensureIndex({fiel: "hashed"}) // 因为是hashed shard 所以要成为hashed索引
+
+  sh.shardCollection("<datavase>.<collection>",{ <shard key>:"hashed" })
+  shard key : 可以时Document中的一个字段
+  You must specity the full namespace of the collection and the shard key
+   
+  
+

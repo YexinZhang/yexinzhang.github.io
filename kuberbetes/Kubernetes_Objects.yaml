@@ -1,0 +1,9 @@
+---
+
+Understanding k8s objects:
+  A persistent entities in k8s system. They describe
+  1. 有哪些容器正在运行,以及在那些节点上
+  2. 那些容器可使用的资源情况
+  3. 这些容器表现出来的策略，比如重启，更新，容错
+
+
