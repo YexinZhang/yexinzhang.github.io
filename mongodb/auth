@@ -10,15 +10,134 @@ mongod --auth 开启认证模式
         {
             user: "myUserAdmin",
             pwd: passwordPrompt(),
-            roles: [ { role: "userAdminAnyDatabase" }, db: "admin", "readWriteAnyDatabase" ]
+            roles: [ 
+                    { role: "userAdminAnyDatabase" , db: "admin" },
+                     "readWriteAnyDatabase" 
+                   ]
         }
     )
 
 1. mongo --authenticationDatabase "DATABASE_NAME" -u "USER" -p
 2. db.auth("USERNAME", passwordPrompt())
+   db.auth("USERNAME", "PASSWORD")
 
 
 Create additional users as needed for your deployment
+
+
+创建用户自定义的role
+    要想在数据库上创建角色，你需要以下的权限
+    The db.createRole action on that database resource
+    The db.grantRole action on that database to specify privileges for new role as well as to specify role to inherit From
+  Build-IN roles userAdmin and userAdminAnyDatabase privades that actions
+
+    以下示例创建一个名为manageOpRole的角色，该角色仅提供运行db.currentOp（）和db.killOp（）的特权
+    首先 先用管理员 账户登录
+    use admin
+    db.createRole(
+        {
+            role: "manageOpRole",
+            privileges: [
+                {resource: {cluster: true}, actions: ["killop","inprog"]},
+                {resource: {db: "",collection: ""}, actions: ["killCursors"]}
+            ],
+            roles: []
+        } 
+
+    创建一个能够运行mongostat 的角色.
+        use admin
+        db.createRole(
+            {
+                role: "mongostatRole",
+                privileges: [
+                    { resource: { cluster: true }, actions: [ "serverStatus" ] }
+                ],
+                roles: []
+            }
+        )
+
+    创建一个角色以删除system.views跨数据库的集合
+        use admin
+        db.createRole(
+            {
+                role: "dropSystemViewAnyDatabases",
+                privileges: [
+                    {
+                        resource: {db: "", collection: "system.views"}, actions: ["dropCollection"]
+                    }
+                ],
+                roles: []
+            }
+        )
+    
+    创建collection级别的角色:
+        privileges: [
+            { resource: { db: "products", collection: "inventory" }, actions: [ "find", "update", "insert" ] },
+            { resource: { db: "products", collection: "orders" },  actions: [ "find" ] }
+        ]    
+    
+修改现有用户的访问权限:
+    must have grantRole and revokeRole aceions 
+    要查看角色的信息，您必须被明确授予该角色或必须对该角色的数据库执行viewRole操作
+    db.getUser("USERNAME") 可以查看用户的信息
+    db.getRole("ROLENAME") 可以查看角色的信息
+
+    回收角色
+        use reporting
+        db.revokeRolesFromUser(
+            "reportsUser",
+            [
+            { role: "readWrite", db: "accounts" }
+            ]
+        )    
+    授权角色
+    use reporting
+    db.grantRolesToUser(
+        "reportsUser",
+        [
+            { role: "read", db: "accounts" }
+        ]
+    )
+
+修改现有用户的密码
+    db.changeUserPassword("user123", "SOh3TbYhxuLiW8ypJPxmt1oOfL")
+    需要创建一个角色，使其拥有修改自身密码和custom
+    use admin
+    db.createRole(
+        {
+            role: "changeOwnPassAndCustom",
+            privileges: [
+                {
+                    resource: {db: "", collection: ""}, 
+                    actions: ["changeOwnPassword", "changeOwnCustomData"]
+                }
+            ],
+            roles: []
+        }
+    )
+    授权给用户
+    use test
+    db.createUser(
+        {
+            user:"user123",
+            pwd:"12345678",
+            roles:[ 
+                "readWrite", 
+                { role:"changeOwnPasswordCustomDataRole", db:"admin" } 
+            ]
+        }
+    )
+    mongo --port 27017 -u user123 -p '12345678' --authenticationDatabase 'test'
+
+    修改用户自己的信息 // db.updateUser()
+
+    db.updateUser(
+        "user123",
+        {
+            pwd: "redhat",
+            customData: { title: "senior manager " }
+        }
+    )
 
 
 

@@ -1,0 +1,13 @@
+User Management:
+
+db.auth() 
+db.changeUserPassword()
+db.createUser()
+db.dropUser()
+db.dropAllUsers()
+db.getUser()
+db.getUsers()
+db.grantRolesToUser()
+db.removeUser() // Deprecated
+db.revokeRolesFromUser()
+db.updateUser()
