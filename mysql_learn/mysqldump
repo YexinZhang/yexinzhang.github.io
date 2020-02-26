@@ -1,0 +1,137 @@
+mysqldump 相关用法
+mysqldump备份数据库需要相应的权限， 但是一般情况都是管理员执行备份
+
+
+Invocation syntax
+    shell> mysqldump [options] db_name [tbl_name ...]
+    shell> mysqldump [options] --databases db_name ...
+    shell> mysqldump [options] --all-databases
+
+--all-databases 所有数据库
+--databases 指定数据库 可以指定多个， 但是最后输出到一个文件中, 该语句会携带 CREATE DTABASE 语句
+    mysqldump --databases db1 db2 db3 > backup.sql
+
+    mysqldump db1 db2 db3 > backup.sql 语句里面不会携带 CREATE DATABASE 语句.
+
+--add-drop-database 使转储文件在重新创建每个数据库之前 强制的删除每个数据库, 也就是在CREATE DATABASE前添加DROP DATABASE
+
+复制事件，触发器，存储例程
+--events
+--routines
+--triggers //enabled by default when tables are dumped
+    跳过
+    --skip-events, 
+    --skip-routines, or 
+    --skip-triggers.
+
+--no-data 只有CREATE 语句， 没有表数据
+--no-create-info 只有数据， 没有CREATE 语句
+
+导入数据?:
+    shell> mysql < backup.sql
+    shell> mysql DATABASE < backup.sql
+        // 要确定数据库是否存在，不存在的话，需要手动创建
+
+    mysql> source backup.sql
+
+    mysql> CREATE DATABASE IF NOT EXISTS db1;
+    mysql> USE db1;
+    mysql> source dump.sql
+
+使用mysqldump 来测试升级后的不兼容性
+    我们关键来验证定义语言的不兼容性
+    首先
+        我们在 生产机器上:
+        shell> mysqldump --no-data --all-databases --routines --events > backup.sql
+    然后
+        将这些没有数据的定义语句导入升级/ 降级后的传新版本
+        shell> mysql < backup.sql
+
+        查看是否有报错
+    如果一切正常
+        我们从production machine导出数据:
+        shell> mysqldump --no-create-info --all-databases > dataBack.sql
+
+        导入到新版本机器
+        shell> mysql < dataBack.sql
+    这个时候就可以做一些检查，或者测试类的查询
+
+
+
+时间点还原:
+    还原到某一时间:  假设十点钟误删除了一张表，几个小时后才发现,我们可以先还原到十点之前, 再从十点一秒开始执行
+        十点前: mysqlbinlog --stop-datetime='2005-04-20 9:59:59' mysql_bin.000001 | mysql -uroot -p
+        十点后: mysqlbinlog --start-datetime='2005-04-20 10:00:01' mysql_bin.000001 | mysql -uroot -p
+
+
+Performance and scalability Considerations
+    对于大数据量，即使备份步骤花费了合理的时间，恢复数据也可能会非常缓慢，因为重放SQL语句会涉及用于插入，创建索引等的磁盘I/O。
+    mysqldump可以逐行检索和转储表内容，也可以从表中检索全部内容并将其缓冲在内存中，然后再转储。
+
+    如果您正在使用最新版本的mysqldump生成转储以重新加载到非常老的MySQL服务器中，请使用--skip-opt选项而不是--opt或--extended-insert选项。
+
+
+
+mysqldump options
+
+    connection options
+        --bind-address=IP_ADDR
+        --compress, -C  // 压缩Compress all information sent between the client and the server if possible
+        --host=host_name, -h host_name //default localhost
+        --login-path=name 
+             example: 
+                先设定login-path: mysql_config_editor set --login-path=remote --host=remote.example.com --user=remoteuser --password 
+                登陆时加上选项: --login-path=remote
+        --password=PASSWORD, -p[PASSWORD]
+        --port=3306, -P 3306
+        --protocol={TCP|SOCKET|PIPE|MEMORY}
+        --socket=path, -S path
+        --user=, -u user_name
+        \
+
+    
+    DDL options
+        --add-drop-database
+        --add-drop-table
+        --add-drop-trigger
+
+        --no-create-db, -n // 如果指定了--databases或--all-databases选项，则禁止在输出中包含CREATE DATABASE语句。
+        --no-create-info -t // 只有数据，
+        --replace // Write REPLACE statements rather than INSERT statements.
+        \
+
+    debug
+        --force, -f // ignore all errors; coneinue even if sql errors occurs during a table dump
+
+
+    标准化选项:
+        --character-sets-dir=dir_name 
+        --default-character-set=charset_name  // 默认字符集 未指定时，默认使用utf8
+
+    filter options
+        --all-databases
+        --databases, -B  // CREATE DATABASE and USE statements are included in the output before each new database.
+        --ignore-tables=db_name.table_name 
+        --no-data, -d 
+        --tables 库名 table_name, table_name...
+        --where 
+            仅转储由给定WHERE条件选择的行。如果条件包含引号或命令解释器特有的空格或其他字符，则必须在条件周围加上引号。
+            --where="user='jimf'"
+            -w"userid>1"
+            -w"userid<1"            
+
+    performance options
+        --quick  此选项对于转储大型表很有用。它强制mysqldump一次从服务器中检索一行表的行，而不是检索整个行集并将其缓冲在内存中，然后再将其写出。
+
+    transaction options
+        --add-locks  用LOCK TABLES和UNLOCK TABLES语句包围每个表转储。重新装入转储文件时，这可以加快插入速度
+        --flush-logs  刷新日志
+        --lock-all-tables, -x
+        --lock-tables, -l
+
+        --single-transaction
+            This option sets the transaction isolation mode to REPEATABLE READ and send START TRANSACTION SQL statements to server before
+            dumping data.
+            当使用--single-transaction 备份时，请确保其他的连接没有使用如下的语句:
+                ALTER TABLE, CREATE TABLE, DROP TABLE, RENAME TABLE, TRUNCATE TABLE. 
+            一致的读取并非与这些语句隔离开，因此在要转储的表上使用它们可能会导致mysqldump执行的SELECT检索表内容以获得不正确的内容或失败
