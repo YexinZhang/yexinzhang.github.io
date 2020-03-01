@@ -1,0 +1,87 @@
+subversion with https
+
+centos 7 环境
+主要是apache实现了ssl层的交互
+
+apache使用的dav的svn模块，实现调度svn
+
+实验三台主机:
+    一台ca主机，用于签署客户端和服务器的证书，并且向服务端提供ca的证书
+    客户端使用ca签署的证书来checkout 版本库中的内容
+    服务段准备svn 以及 apache服务
+
+
+    CA 的建立(ca.zyxasr.com):
+        根据/etc/pki/tls/openssl.conf 配置生成ca的证书以及私钥    
+        生成私钥: 
+            cd /etc/pki/CA/
+            touch serial index.txt
+            echo 01 > serial
+            (umask 077; openssl genrsa -out private/cakey.pem 4096)
+            openssl req -new -x509 -key private/cakey.pem -days 3650 -out cacert.pem
+            CN,ZJ,HZ,NETEASE,OPS,ca.zyxasr.com,zyxasr@qq.com
+
+        根证书生成完毕
+
+        接受客户端以及服务端的签署请求，并生成对应的证书文件
+        
+
+    客户端 client.zyxasr.com:
+        下载subversion
+        生成证书请求
+            (umask 077; openssl genrsa -out client.key 4096)
+            openssl req -new -key client.key -out client.csr
+            发送给ca 签署
+        将证书转换成pfx格式
+        openssl pkcs -export -clcerts -in client.crt -inkey client.key -out client.pfx
+        在用户的家目录配置 .subversion/servers
+        [groups]
+        svnServer = svn.zyxasr.com
+
+        [svnServer]
+        ssl-client-cert-file = /home/xx/client.pfx
+        ssl-client-cert-password = xxx
+
+    服务端 svn.zyxasr.com    
+
+        请求服务端证书
+            ...
+            ...
+
+        install  mod_dav_svn 模块
+        配置 svn 目录
+        mkdir /svn
+        cd /svn
+        svnadmin create mtl_patch
+        chown apache:apache /svn -R
+
+    配置apache 代理svn
+        vim /etc/httpd/conf.d/svn.conf
+        <Location /svn>
+            DAV svn
+            SVNParentPath /svn # 指向了svn repo的父目录
+            AuthType Basic
+            AuthName "Authorization Realm"
+            AuthUserFile /svn/mtl_patch/conf/passwd # svn工作目录下
+            AuthzSVNAccessFile /svn/mtl_patch/conf/authz # 同上
+            Satisfy all
+            Require valid-user
+        </Location>
+
+        使用htpasswd 为svn添加用户
+        htpasswd -cm /svn/mtl_patch/conf/passwd admin
+        修改svn 的认证权限 /svn/mtl_patch/conf/authz
+
+        配置apache 接受ssl链接
+            修改 /etc/httpd/conf.d/ssl.conf
+            SSLCertificateFile /etc/httpd/ssl/svn.crt
+            SSLCertificateKeyFile /etc/httpd/ssl/svnkey.pem
+            # 下面三行 表示要求客户端出示证书才能建立连接，需要CA的证书
+            SSLCACertificateFile /etc/pki/tls/certs/cacert.pem
+            SSLVerifyClient require
+            SSLVerifyDepth  10
+
+
+    到此
+        我们在客户端上执行
+        svn checkout https://svn.zyxasr.com/svn/mtl_patch
