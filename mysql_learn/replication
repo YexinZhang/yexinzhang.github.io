@@ -1,0 +1,16 @@
+The Replication that based on Binary logs.
+
+
+############
+Note:
+    server_id cannot set to 0 or Null(it is default value), 
+    if donot set ,The master refuses ant connections from slaves.
+
+    innodb_flush_log_at_trx_commit=1(设置为1 表示严格遵守ACID合规，不会导致丢失事务)
+    sync_binlog=1
+
+    锁表
+    FLUSH TABLES WITH READ LOCK;
+    UNLOCK TABLES;
+
+    

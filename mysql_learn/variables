@@ -1,0 +1,13 @@
+
+--default_password_lifetime=N 正整数 表示多久过期 
+    默认的密码过期策略 0 表示不过期
+
+    ALTER USER 'script'@'localhost' PASSWORD EXPIRE NEVER 永不过期
+
+    要求每90天，修改一次密码
+    ALTER USER USER()  PASSWORD EXPIRE INTERVAL 90 DAY;
+    CREATE USER USER()  PASSWORD EXPIRE INTERVAL 90 DAY;
+
+mysql.user的account_locked可以锁定用户登录
+UPDATE  mysql.user SET account_locked='N' WHERE User='admin';
+
