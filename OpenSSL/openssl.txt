@@ -1,0 +1,51 @@
+OpenSSL Architecure
+
+1.libcrypto:
+    核心库，提供以及实现了密码学原语.
+    它还提供了一组供libssl和libcrypto使用的支持服务，以及诸如CMS和OCSP之类的协议的实现。
+
+2. Engine:
+    dynamically loadable modules that are registered with libcrypto
+
+3. libssl
+    实现了tls和dtls协议
+
+4. Applications
+    command tools
+    a. 密钥的生成以及检查
+    b. 证书的生成
+    c. SSL/TLS test tools
+    d. ASN.1 编码规范
+
+RSA------
+To generate an RSA key, use genrsa command
+
+openssl genrsa -aes256 -out private.key 4096
+    -aes256 使用aes256 bit的对称加密 加密私钥密码
+
+openssl rsa -text -in private,key
+    查看密钥的结构
+
+生成对应的公钥
+openssl rsa -in private.key -pubout -out public.key
+
+DSA------
+
+dsa paramaters are created is a two step process;
+1. 生成dsa参数, 2. 创建key (下面的语句将两阶段合并)
+    openssl dsaparam -genkey 4096 | openssl dsa -out dsa.key -aes256
+
+ECDSA-----
+椭圆曲线加密
+openssl ecparam -genkey -name secp384r1 | openssl ec -out ecdsa_private.key -aes256
+
+
+Creating certificate Signing Requests
+生成证书请求:
+    openssl req -new -key private.key -out private.csr
+    生成的证书请求中的 extra 部分重的 challenge password 部分输入的密码 
+    的作用是为了吊销证书的时候使用的.
+
+    当我们需要续签证书的时候，如果没有更改信息,为了方便我们可以使用以下语句重新生成请求
+    openssl x509 -x509toreq -in private.crt -out private.csr -signkey private.key
+
