@@ -1,0 +1,28 @@
+Install:
+    percona-xtrabackup-24
+    $ wget https://repo.percona.com/apt/percona-release_latest.$(lsb_release -sc)_all.deb
+    $ sudo dpkg -i percona-release_latest.$(lsb_release -sc)_l.deb
+    $ sudo apt-get update
+    $ sudo apt-get install percona-xtrabackup-24
+
+
+    binary Install deb
+    wget https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-2.4.4/binary/debian/jessie/x86_64/percona-xtrabackup-24_2.4.4-1.jessie_amd64.deb
+
+
+
+Connect and backup simple
+    --user
+    --password
+    --backup
+    --target-dir=/...   备份文件的存放位置
+
+    xtrabackup --user=root  --backup --target-dir=/data/mysql
+    
+    innobackupex --user=DBUSER --password=xx /path/to/backup/dir/parh
+    innobackupex --user=root --stream=tar ./ | bzip2 -
+
+
+    databaseuser need following privileges:
+    RELOAD and LOCK TABLES(unless the --no-lock opt is specified) in order to FLUSH \
+    TABLES TITH READ LOCK and FLUSH ENGINE LOGS prior to start copying the files.

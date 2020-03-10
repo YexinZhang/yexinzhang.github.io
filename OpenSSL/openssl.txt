@@ -49,3 +49,20 @@ Creating certificate Signing Requests
     当我们需要续签证书的时候，如果没有更改信息,为了方便我们可以使用以下语句重新生成请求
     openssl x509 -x509toreq -in private.crt -out private.csr -signkey private.key
 
+非交互式的生成请求  需要用到 -config 选项
+openssl req -new -key private.key -config cert.config -out private.csr
+cat > cert.config << EOF
+[req]
+prompt = no
+distinguished_name = dn
+input_password = zyx748521
+
+[dn]
+CN = www.zyxasr.com
+emailAddress = zyxasr@qq.com
+O = NETEASE
+OU = OPS
+L = HZ
+ST = ZJ
+C = CN
+EOF
