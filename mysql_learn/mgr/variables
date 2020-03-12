@@ -1,0 +1,22 @@
+寻找主节点
+SHOW STATUS LIKE 'group_replication_primary_member'
+
+选择donor server的重试次数
+set global group_replication_recovery_retry_count = 10
+
+重试间隔 
+The recovery process should sleep between donor connection attempt.
+default 60s, can change it dynamically
+set global group_replication_recovery_reconnect_interval = 120;
+
+在网络发生分区的时候，强制生成新的成员组
+SET GLOBAL group_replication_force_members="host:port,host:port..."
+    只能在极端情况下才能使用
+    在强制生成新的组时， 需要将连接不上的主机先下线
+    在创建完成之后， 必须将该参数置空
+
+白名单: 可以在每一台机器上制定不同的策略
+group_replication_ip_whitelist
+    stop group_replication;
+    set GLOBAL group_replication_ip_whitelist="192.168.0.0/24, sql1.com, 1.1.1.1"
+    start group_replication
