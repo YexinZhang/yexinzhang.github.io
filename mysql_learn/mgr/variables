@@ -20,3 +20,17 @@ group_replication_ip_whitelist
     stop group_replication;
     set GLOBAL group_replication_ip_whitelist="192.168.0.0/24, sql1.com, 1.1.1.1"
     start group_replication
+
+Group group_replication SYSTEM variables;
+
+The following variables must be configured on server instances that are members of group.
+
+--log-bin=LOG_FILE_NAME
+--log-slave-updates=ON //从主服务器上得到的更新，是否记录到自己的二进制日志中
+--binlog-format=ROW
+--binlog-checksum=NONE
+--gtid-mode=ON
+--master_info_repository=TABLE
+--relay_log_info_repository=TABLE
+--transaction-write-set-extraction=XXHASH64 //用于冲突检测
+
