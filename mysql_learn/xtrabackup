@@ -26,3 +26,15 @@ Connect and backup simple
     databaseuser need following privileges:
     RELOAD and LOCK TABLES(unless the --no-lock opt is specified) in order to FLUSH \
     TABLES TITH READ LOCK and FLUSH ENGINE LOGS prior to start copying the files.
+    and LOCK TABLES FOR BACKUP and LOCK BINLOG FOR BACKUP.
+    创建所需要的权限用户
+    GRANT RELOAD, LOCK TABLES, PROCESS, REPLICATION CLIENT ON *.* TO 'bkpuser'@'localhost';
+
+
+backup
+    日志复制线程每秒钟检查事务日志的变化情况以及他需要复制的日志，日志复制线程可能无法跟上
+    大量的写操作，导致日志检查的出错
+
+prepareing a backup
+    可以在任何机器上准备备份数据.
+    xtrabackup --prepare --target-dir=/....
