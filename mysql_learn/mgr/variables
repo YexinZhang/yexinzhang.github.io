@@ -34,3 +34,7 @@ The following variables must be configured on server instances that are members 
 --relay_log_info_repository=TABLE
 --transaction-write-set-extraction=XXHASH64 //用于冲突检测
 
+多线程的申请复制:
+    slave_parallel_workers=N
+    slave_preserve_commit_order=1 //保证事务提交的顺序与原始顺序相同
+

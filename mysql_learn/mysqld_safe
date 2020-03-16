@@ -20,4 +20,3 @@ MySQL 服务的启动脚本
         --syslog-tag
         --skip-syslog
     
-    

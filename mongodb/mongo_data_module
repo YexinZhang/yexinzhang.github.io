@@ -17,7 +17,7 @@ Model ONE-2-ONE :
                     }
     }
 
-Model ONT-2-Many
+Model ONE-2-Many
     {
     _id: "joe",
     name: "Joe Bookreader",
