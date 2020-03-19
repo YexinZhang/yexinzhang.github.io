@@ -1,0 +1,37 @@
+Network File System
+
+Install in Debian 10 buster
+
+    server: apt install nfs-kernel-server
+    client: apt install nfs-common
+
+/etc/exports
+    Machine Name Format
+        single host
+        IP networks
+            192.168.0.0/24, 192.168.0.0/255.255.255.0
+        wildcards:
+            *.zyxasr.com
+        anonymous:
+            * match all clients
+
+    RPCSEC_GSS security
+        sec={sys|...}
+            sys: 默认的 无密码安全性
+            krb5: 仅身份验证
+            krb5i: 完整性验证
+            krb5p: 隐私保护
+
+    Generally options
+        secure,
+        rw
+        async
+        sync
+        no_wdelay: 关闭具有相关写操作的写操作的延时提交（呀就是批量提交相关写操作）
+        wdelay: 批量提交，在不具有非常多小的写操作时会提升性能
+        nohide:
+            如果共享的目录有两级, /nfs/files
+            /nfs 为ext4 文件系统， files 为xfs文件系统，则客户端需要挂载两次
+            如果只挂载了/nfs 则会看不见files
+            加上nohide之后，会显示files文件夹
+        

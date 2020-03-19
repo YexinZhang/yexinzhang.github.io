@@ -1,0 +1,39 @@
+编译安装最新版本的drbd kernel driver 和 drbd-utils
+需要安装一下的依赖包:
+    make gcc linux-headers-`uname -r`-all flex   xsltproc   asciidoc po4a
+
+drbd的软件包:
+    kernel driver: https://www.linbit.com/wp-content/uploads/2020/03/drbd-9.0.22-1.tar.gz
+    drbd-utils: https://www.linbit.com/downloads/drbd/utils/drbd-utils-9.12.0.tar.gz
+
+先安装driver:
+    make && make install
+    激活模块  modprobe drbd
+
+安装utils
+    ./autogen.sh
+    ./configure --prefix=/usr --localstatedir=/var --sysconfdir=/etc
+    make -j 6
+    make install 
+
+DRBD userspace 管理工具
+    FROM TOP-LEVEL to bottom-most these are:
+
+    drbdmanage:
+        this is recommended way to orchestrate DRBD resource in multi-node cluster
+        使用一种drbd 9 资源来存储cluster-wide configuration data. 可以调用lvcreate , drbdadm 等外部程序
+
+    drbdadm:
+        Obtains all DRBD configuration parameters from the configuration file /etc/drbd.conf 
+        and acts as a front-end for drbdsetup and drbdmeta.
+        drbdadm has a dry-run mode, invoked with -d option,
+
+    drbdsetup:
+        configures the drbd module that was loaded into the kernel
+
+    drbdmeta
+        允许创建，转储，还原和修改DRBD元数据结构
+
+
+Replication mode
+    
