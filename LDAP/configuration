@@ -1,0 +1,119 @@
+1
+cn=config
+    此条目包含的指令，通常适用于整个服务器.
+    它们大多数是面向系统或面向连接的，与数据库无关。
+    该条目必须具有olcGlobal objectClass
+    olc(OpenLdap Configuration)
+    oldIdleTimeout: <integer>
+        在强制关闭一个与idle的客户端连接的等待时间，default 0 meaning disable it.
+    olcLogLevel: default-->stats
+        Example:
+        olcLogLevel -1 :enable all debugging
+        olcLogLevel conns filter
+            Just log the connection and search filter processing.
+    olcReferral: 指向下一个服务器
+        olcReferral: ldap://root.openldap.org
+    cn=config-sample-entry:
+    dn: cn=config
+    objectClass: olcGlobal
+    cn: config
+    olcIdleTimeout: 30
+    olcLogLevel: Ststs
+    olcReferral: ldap://root.openldap.com
+
+2
+cn=module
+   如果在配置slapd时启用了对动态加载模块的支持，
+   则cn = module条目可用于指定要加载的模块集。
+   模块条目必须具有olcModuleList objectClass。
+    olcModulePath: <path>
+    olcModuleLoad: <fileName>
+
+    sample-entry:
+        dn: cn=module{0}, cn=config
+        objectClass: olcModuleList
+        cn: module{0}
+        olcModuleLoad: /usr/local/lib/smbk5pwd.la
+
+        dn: cn=module{1}, cn=config
+        objectClass: olcModuleList
+        cn: module{1}
+        olcModulePath: /usr/local/lib:/usr/lib/slapd
+        olcModuleLoad: accesslog.la
+        olcModuleLoad: makeLove.la
+
+3
+cn=schema
+    cn = schema条目包含所有以slapd形式硬编码的模式定义。
+    这样，此条目中的值由slapd生成，因此无需在配置文件中提供任何架构值。
+    但是，仍必须定义该条目，以作为用户定义的架构的基础，以便在其下添加。
+    模式条目必须具有olcSchemaConfig objectClass。
+
+    sample-entry:
+    dn: cn=schema,cn=config
+    objectClass: olcSchemaConfig
+    cn: schema
+
+    dn: cn=test,cn=schema,cn=config
+    objectClass: olcSchemaConfig
+    cn: test
+    olcAttributeTypes: ( 1.1.1
+    NAME 'testAttr'
+    EQUALITY integerMatch
+    SYNTAX 1.3.6.1.4.1.1466.115.121.1.27 )
+    olcAttributeTypes: ( 1.1.2 NAME 'testTwo' EQUALITY caseIgnoreMatch
+    SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.44 )
+    olcObjectClasses: ( 1.1.3 NAME 'testObject'
+    MAY ( testAttr $ testTwo ) AUXILIARY )    
+
+4
+Backend-specific Directives:
+    后端指令适用于相同类型的所有数据库实例，
+    并且取决于指令，数据库指令可能会覆盖后端指令。
+    后端条目必须具有olcBackendConfig objectClass。
+    olcBackend: <type>
+    Types	    Description
+    bdb	        Berkeley DB transactional backend (deprecated)
+    config	    Slapd configuration backend
+    dnssrv	    DNS SRV backend
+    hdb	        Hierarchical variant of bdb backend (deprecated)
+    ldap	    Lightweight Directory Access Protocol (Proxy) backend
+    ldif	    Lightweight Data Interchange Format backend
+    mdb	        Memory-Mapped DB backend
+    meta	    Meta Directory backend
+    monitor	    Monitor backend
+    passwd	    Provides read-only access to passwd(5)
+    perl	    Perl Programmable backend
+    shell	    Shell (extern program) backend
+    sql	        SQL Programmable backend
+Example:
+    olcBackend: bdb
+    Sample Entry
+    dn: olcBackend=bdb,cn=config
+    objectClass: olcBackendConfig
+    olcBackend: bdb
+
+
+
+
+Running slapd
+command-line options
+
+-f filename 
+    configuration file for slapd ,default : /usr/local/etc/openldap/slapd.conf
+-F filedir
+    default /usr/local/etc/openldap/slapd.d
+-h
+    ldap|ldaps|ldapi(Unix-domain socket)://127.0.0.1:389
+-n 
+    service name : 
+-l
+    syslog level
+-u -g
+    这些选项分别指定要作为其运行的用户和组。用户可以是用户名或uid。 group可以是组名或gid。
+-d level
+    debug level
+starting slapd 
+     /usr/local/libexec/slapd [<option>]*
+stop
+    kill -INT `cat /usr/local/var/slapd.pid`
