@@ -1,0 +1,26 @@
+gerrit replication
+
+
+1, 确保主gerrit可以通过ssh登录到slave的机器上
+
+2, 主gerrit打开replication插件, 并且编辑${gerrit}/etc/replication.config
+        [remote "SLAVE_IPADDRESS"] //从gerrit的IP地址 或者 机器名
+        url = gerrit@SLAVE_IPADDRESS:/home/gerrit/review-site/git/${name}.git 
+            //路径名可以随意，关键是最后的${name}.git需要带上
+            // push到slave上存放的位置
+        push = +refs/heads/*:refs/heads/*
+        push = +refs/tags/*:refs/tags/*
+        mirror = true
+        threads = 3
+        replicationDelay = 2 //延迟多少时间进行复制
+
+3, 需要在etc/gerrit.config 中添加字段
+    [plugins]
+    allowRemoteAdmin = true
+
+4, 有可能需要在~/.ssh/config 中编辑以下内容
+    Host SLAVE_IPADDRESS //slave_ip
+        User gerrit
+        IdentityFile  /home/gerrit/.ssh/id_rsa
+        StrictHostKeyChecking no 
+        UserKnownHostsFile /dev/null

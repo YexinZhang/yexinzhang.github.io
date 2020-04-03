@@ -1,0 +1,205 @@
+
+logrotate: config file
+
+compress 
+
+uncompresscmd: 解压缩  指定一个命令 [gunzip]
+
+copy: 给当前日志做一个备份
+
+daily: log will rotate every day
+
+maxage: Remove rotated logs older than <count> days
+
+minsize: 达到多大轮转， 与时间选项互斥
+
+monthly: 每月第一轮转
+
+copytruncate: 在创建副本之后截断原来的日志文件
+
+nocompress
+
+notifempty: 空日志不论转
+
+missingok: If the log file is missing, go on to the next one without issuing an error message.
+
+nocopy
+
+postrotate/endscript: 轮转后
+
+prerotate/endscript: 轮转前,并且日志确定会轮转
+
+rotate Log file轮转多少次，在删除和邮件之前，旧版本如果为0则表示，轮转完毕便删除
+
+weekly: 如果当前工作日小于上次轮换的工作日，或者自上次轮换以来已经过去了一周多的时间，则轮换日志文件。
+
+yearly
+
+nomail
+
+/var/log/messages {
+    rotate 5 : 日志在删除之前每周滚动五次
+    weekly
+    postrotate:
+        /usr/bin/killall -HUP syslogd
+        引入一个日志轮转后执行的脚本
+    endscript
+}
+
+
+
+Rsyslog
+    rsyslog v8 新的语法， 使用了block的组织结构 
+    
+    ------------------------------------------------------
+    注意:
+        在使用 relp module的时候 应该安装rsyslog-relp
+        apt install rsyslog-relp
+        其他的安装包
+            rsyslog                
+            rsyslog-doc            
+            rsyslog-gnutls         
+            rsyslog-hiredis        
+            rsyslog-mongodb        
+            rsyslog-pgsql
+            rsyslog-czmq           
+            rsyslog-elasticsearch  
+            rsyslog-gssapi         
+            rsyslog-kafka          
+            rsyslog-mysql          
+            rsyslog-relp
+    ------------------------------------------------------
+    一般先加载input，output模块， 然后在编写日志的模板，日志的模板可以应用到日志中的每条内容
+    也可以配合一些输出模块中的属性，比如dynaFile动态的生成文件
+    常用属性:
+        msg 
+        rawmsg
+        fromhost: hostname of the messgaes was recevied from. 不一定是原始的发送者
+        fromhost-ip
+        syslogtag
+        programname
+        syslogfacility-text
+        syslogseverity-text
+        syslogpriority-text
+        timereported
+
+        system properties:
+            timereported: log创建时候的试间， 在中继链中传输过程中可能会很旧
+            timegenerated: 包含本地系统接收消息时的时间戳。这里的“已接收”实际上是指消息从OS移交给rsyslog的接收缓冲区的时间，
+                但未进行任何实际处理之前的时间点。这也意味着在将消息放入任何队列之前已“接收”到该消息。请注意，取决于输入，
+                可能会发生一些最少的处理，例如从接收缓冲区中提取实际消息内容。如果通过同一接收缓冲区接收到多个消息
+                （例如，在使用基于TCP的syslog的常见情况下），则它们具有相同的时间生成戳记，因为它们实际上是在同一时间接收的。
+            $now is not from the message. It is the system time when the message is being processed.
+
+    input 模块一般会有 imfile, imrelp, imtcp, imdocker, imuxsock
+    output模块一般会有 omfile, onrelp, omhttp, ommysql, ommongodb
+
+    template: 
+        适用于日志内容和文件名称
+        type:
+            list
+            subtree
+            string
+            plugin
+        example:
+        template(name="tpl1" type="list") {
+            constant(value="Syslog MSG is: '")
+            property(name="msg")
+            constant(value="', ")
+            property(name="timereported" dateFormat="rfc3339" caseConversion="lower")
+            constant(value="\n")
+        }
+
+        constant 其实就简单来说就是我们给原来的日志内容添加的信息
+            The “constant” statement supports the following parameters:
+                value - the constant value to use
+                outname - output field name (for structured outputs) //用于结构化输出
+                format - can be either empty or jsonf
+                jsonf:
+                    template(name="jsonfile" type="list") {
+                            constant(value="{ ")
+                            property(outname="message" name="msg" format="jsonf")
+                            constant(outname="@version" value="1" format="jsonf")
+                            constant(value=" }\n")
+                    }
+---> { "message":"127.0.0.1 - - [03\/Apr\/2020:14:32:53 +0800] \"GET \/ HTTP\/1.1\" 200 8 \"-\" \"curl\/7.64.0\"""@version": "1" }
+        
+        property: 简单来说就是日志原本内容的一些属性和生成的格式设置，通过这些属性我们可以操作日志内容本身，
+            比如msg就代表可日志内容本身，上面例子中 constant + property 就可以看多是：
+            在日志内容的前面添加了一段文字"Syslog MSG IS: "
+            下面的 "property(name="timereported" dateFormat="rfc3339" caseConversion="lower")"
+            就会生成一个rfc-3339格式的时间信息并且转换成为小写格式生成，---> 2020-04-03t14:03:53.510883+08:00
+        一般会在action中调用template
+        property statement:
+            name: 访问哪一个属性
+            outname: 结构化输出时的名称
+            dateformat: 
+                property(name="timereported" dateformat="year")
+                constant(value="-")
+                property(name="timereported" dateformat="month")
+                constant(value="-")
+                property(name="timereported" dateformat="day")
+                ---> YYYY-MM-DD的输出
+            format - specify format on a field basis. Supported values are:
+                “csv” for use when csv-data is generated
+                “json” which formats proper json content (but without a field header)
+                “jsonf” which formats as a complete json field
+                “jsonr” which avoids double escaping the value but makes it safe for a json field
+                “jsonfr” which is the combination of “jsonf” and “jsonr”.
+            position.from : 从字符串的某一位开始，字符串的第一位默认是1
+            position.to: 结束
+            example : property(name="timestamp" dataFormat="rfc3339" position.from="1" position.to="4")
+                --> original: 2020-04-03T15:07:01.408409+08:00 format之后，取第一位到第四位: 2020
+            Example:
+                Standard Template for Forwarding to a Remote Host (RFC3164 mode)
+                template(name="ForwardFormat" type="list") {
+                    constant(value="<")
+                    property(name="pri")
+                    constant(value=">")
+                    property(name="timestamp" dateFormat="rfc3339")
+                    constant(value=" ")
+                    property(name="hostname")
+                    constant(value=" ")
+                    property(name="syslogtag" position.from="1" position.to="32")
+                    property(name="msg" spifno1stsp="on" )
+                    property(name="msg")
+                    }
+
+                Standard Template for writing to the MySQL database
+                template(name="StdSQLformat" type="list" option.sql="on") {
+                        constant(value="insert into SystemEvents (Message, Facility, FromHost, Priority, DeviceReportedTime, ReceivedAt, InfoUnitID, SysLogTag)")
+                        constant(value=" values ('")
+                        property(name="msg")
+                        constant(value="', ")
+                        property(name="syslogfacility")
+                        constant(value=", '")
+                        property(name="hostname")
+                        constant(value="', ")
+                        property(name="syslogpriority")
+                        constant(value=", '")
+                        property(name="timereported" dateFormat="mysql")
+                        constant(value="', '")
+                        property(name="timegenerated" dateFormat="mysql")
+                        constant(value="', ")
+                        property(name="iut")
+                        constant(value=", '")
+                        property(name="syslogtag")
+                        constant(value="')")
+                }
+            For json
+                template(name="outfmt" type="list" option.jsonf="on") {
+                        property(outname="@timestamp" name="timereported" dateFormat="rfc3339" format="jsonf")
+                        property(outname="host" name="hostname" format="jsonf")
+                        property(outname="severity" name="syslogseverity" caseConversion="upper" format="jsonf" datatype="number")
+                        property(outname="facility" name="syslogfacility" format="jsonf" datatype="number")
+                        property(outname="syslog-tag" name="syslogtag" format="jsonf")
+                        property(outname="source" name="app-name" format="jsonf" onEmpty="null")
+                        property(outname="message" name="msg" format="jsonf")
+                }
+
+            DynaFileName:
+                template (name="DynFile" type="string" string="/var/log/system-%HOSTNAME%.log")
+
+
+Rsyslog Queue:
+    

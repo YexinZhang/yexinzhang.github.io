@@ -1,0 +1,43 @@
+Basic Struct
+
+    Messages enter rsyslog with the help of input modules.
+Then, they are passwd to a ruleset,where rules are conditionally
+applied. When a rule matches, the message is transferred to an 
+action, which then does something to the message, e.g. writes it
+to a file, database or forwardd it to a remote host.
+
+
+Processing 原则
+
+    input 将收到的消息提交到rulesets
+        如果规则集没有特别的约束，则使用默认的规则
+        default: RSYSLOG_DefaultRuleset
+    while it is permitted to have zero rules inside a ruleset
+this is obviously make no sense(没有意义)    
+    A rule consists of a filter and an action list
+    Filter provide yes/no decisions and thus control-of-flow(控制流量) capability
+    匹配会则会从第一个评估直到最后一个
+    无论过滤器是否匹配，所有规则都会得到充分评估（因此我们不会在第一个匹配时停下来）。
+如果消息处理将停止，则必须显式执行“丢弃”动作（由~字符或stop命令表示）。如果执行了丢弃，
+则消息处理将立即停止，而无需评估任何其他规则。
+    在action列表中无法再进行过滤
+
+Flow Control Statements:
+1. Control structures
+    if:
+        if ($msg contains "important") then P{
+            if ( $.foo != "" ) then set $.foo = $.bar & $.baz;
+            action(type="omfile" file="/var/log/important.log" template="outfmt")
+        }
+
+        if ($msg contains "important") then {
+            set $.foo = $.bar & $.baz;
+            action(type="omfile" file="/var/log/important.log" template="outfmt")
+        } else if ($msg startswith "slow-query:") then {
+            action(type="omfile" file="/var/log/slow_log.log" template="outfmt")
+        } else {
+            set $.foo = $.quux;
+            action(type="omfile" file="/var/log/general.log" template="outfmt")
+        }
+
+        
