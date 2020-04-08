@@ -203,3 +203,58 @@ Rsyslog
 
 Rsyslog Queue:
     
+
+
+
+
+
+
+
+
+
+
+Example:
+
+module(load="imrelp")
+module(load="imfile")
+input(type="imrelp" port="20514" maxDataSize="10k")
+module(load="omfile")
+
+template(name="local" type="list"){
+        constant(value="/data/logs/")
+        property(name="timestamp" dateFormat="rfc3339"
+                        position.from="1" position.to="4")
+        property(name="timestamp" dateFormat="rfc3339"
+                        position.from="6" position.to="7")
+        property(name="timestamp" dateFormat="rfc3339"
+                        position.from="9" position.to="10")
+        constant(value="/local")
+        constant(value="_")
+        property(name="programname" securepath="replace")
+        constant(value=".log")
+}
+template(name="outfmt" type="list" option.jsonf="on") {
+property(outname="@timestamp" name="timereported" dateFormat="rfc3339" format="jsonf")
+property(outname="host" name="hostname" format="jsonf")
+property(outname="severity" name="syslogseverity" caseConversion="upper" format="jsonf" datatype="number")
+property(outname="facility" name="syslogfacility" format="jsonf" datatype="number")
+property(outname="syslog-tag" name="syslogtag" format="jsonf")
+property(outname="source" name="app-name" format="jsonf" onEmpty="null")
+property(outname="message" name="msg" format="jsonf")
+}
+
+input(type="imfile"
+        File="/root/access.log"
+        Tag="tag1"
+        Serverity="error"
+        Facility="local7"
+)
+
+if $syslogfacility-text == 'local7' then {
+    action(type="omfile" template="outfmt" FileCreateMode="0644" File="/var/log/cao")
+}
+
+if $syslogtag == "relp" then {
+        action(type="omfile" dirCreateMode="0755" FileCreateMode="0644"
+        dynaFile="local")
+}
