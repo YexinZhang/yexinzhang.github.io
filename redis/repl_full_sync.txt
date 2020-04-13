@@ -1,0 +1,12 @@
+Redis Full replica synchronization
+
+	当slave连接到master上时，会使用PSYNC命令将自己的旧的replication id以及偏移量发送给master，
+这样，master就可以只发送增长的需要发送的部分。但是，当master的buffer中没有足够的backlog时，又
+或者slave指向的replication id, master已经不知道时， full replication 就会发生。
+
+	full replication 细节:
+	master开始一个后台线程用来生成RDB文件，同时，他会将所有的客户端的写命令缓存起来，当后台的
+RDB线程完成时，master将会吧rdb文件发送给replica，replica将其保存在磁盘，并加载到内存中，接下来
+The master will send all buffered commands to replica. 
+
+
