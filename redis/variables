@@ -1,0 +1,37 @@
+repl-diskless-sync
+    配置参数启用无盘复制。在第一个副本之后，为了等待更多副本到达而开始传输的延迟由repl-diskless-sync-delay参数控制。.
+
+replica-read-only
+    可以通古篇config set 在runtime执行
+
+requirepass <password> 
+    设置数据库密码
+masterauth <password> 
+    master的认证密码
+
+config set masterauth <password> 在线改设置
+
+min-replicas-to-write <number of replicas>  n个
+min-replicas-max-lag <number of seconds>  m秒
+    必须至少有n个replica连接到master， 并且延迟不大于M秒
+    这是一种尽力而为的安全机制，达到了这个标准，master才回接受write操作
+
+How Redis replication deal with expires on keys
+    redis 允许key存在生存试间， 并且在replication中有效的复制， 这种能力取决于实例计算试间的能力，即使用Lua脚本修改，slave也可以正确的复制
+    要实现这种功能，Redis不能依赖于主服务器和副本服务器具有同步时钟的能力，因为这是一个无法解决的问题，并且会导致竞争状况和数据集差异，
+    因此Redis使用三种主要技术来使过期密钥的复制能够正常工作：
+    1. replica 不会使key失效，反而在等待master的key失效， master生成del指令，并且传输到所有的replica
+    2. 如果没有收到del指令，则slave使用逻辑时钟报告该key，会让读操作不显示该key，视为逻辑过期
+    3. 要实现这种功能，Redis不能依赖于主服务器和副本服务器具有同步时钟的能力，因为这是一个无法解决的问题，并且会导致竞争状况和数据集差异，
+       因此Redis使用三种主要技术来使过期密钥的复制能够正常工作：
+
+    将副本提升为主副本后，它将开始独立地失效密钥，并且不需要其旧主副本的任何帮助。
+
+
+
+[administoration]
+- sysctl vm.overcommit_memory=1
+- echo never > /sys/kernel/mm/transparent_hugepage/enabled
+- 打开一些交换分区， 防止redis突然占用大量内存
+- 设置redis.conf中的maxmemory 大小为物理内存的80%左右
+- 在daemontool中使用是，需要设置daemonize为no

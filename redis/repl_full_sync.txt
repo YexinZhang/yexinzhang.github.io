@@ -9,4 +9,5 @@ Redis Full replica synchronization
 RDB线程完成时，master将会吧rdb文件发送给replica，replica将其保存在磁盘，并加载到内存中，接下来
 The master will send all buffered commands to replica. 
 
-
+replication id:
+	A replication id basically marks a given history of the data set.
