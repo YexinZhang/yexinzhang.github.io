@@ -35,3 +35,29 @@ How Redis replication deal with expires on keys
 - 打开一些交换分区， 防止redis突然占用大量内存
 - 设置redis.conf中的maxmemory 大小为物理内存的80%左右
 - 在daemontool中使用是，需要设置daemonize为no
+
+
+shuwdown command: 
+使用了SIGTERM或者SIGINT信号
+- 如果有保存rdb文件或者执行aof操作的后台进程，这些进程将会被杀死
+- 如果AOF是活的，则Redis会在AOF文件描述符上调用fsync系统调用，以便刷新磁盘上的缓冲区。
+- 如果将Redis配置为使用RDB文件保留在磁盘上，则将执行同步（阻止）保存。由于保存是通过同步方式执行的，因此不会使用额外的内存
+- 如果redis时daemonize的， 则删除pid文件
+- 如果开启了ubix socket文件，则删除
+- server exits with an exit code of zero
+
+The following follow signals are handled as a Redis crash:
+SIGSEGV
+SIGBUS
+SIGFPE
+SIGILL
+一旦捕获到以上信号，redis将终止当前操作，并且执行以下行为
+- bug report produced on the log file.
+...
+
+如果子线程被杀死
+当一个子线程正在执行aof重写，这个时候被杀死，redis捕获此信号，并且丢弃正在写的aof文件，重新触发写操作
+子线程rdb时被killed，Redis进入一个特殊的错误条件，在该条件下不再接受进一步的写入命令：
+    - 继续执行读操作
+    - Redis将回复所有带有MISCONFIG错误的写命令。
+    仅当成功创建rdb文件之后，才会清除此错误

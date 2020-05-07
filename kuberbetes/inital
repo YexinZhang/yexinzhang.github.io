@@ -1,0 +1,50 @@
+集群的一些初始化设置
+cat <<EOF > /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+sysctl --system
+swapoff -a
+
+安装kubeadm
+sudo apt-get update && sudo apt-get install -y apt-transport-https curl
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+cat <<EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
+deb https://apt.kubernetes.io/ kubernetes-xenial main
+EOF
+sudo apt-get update
+sudo apt-get install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
+
+
+新的节点接入集群
+kubeadm token list 获得还没有过期的token
+kubeadm token create
+openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | \
+   openssl dgst -sha256 -hex | sed 's/^.* //'
+kubeadm join 192.168.213.131:6443 --token e6jjf0.ph94mhsxlg26o6y3 \
+    --discovery-token-ca-cert-hash sha256:c925c0709e4babc29cb71e10520836e0681a18169e87f2b522145133952dbee8
+
+
+删除节点
+kubectl drain {node#} --delete-local-data --force --ignore-daemonsets
+kubectl delete node {node#}
+iptables -F && iptables -t nat -F && iptables -t mangle -F && iptables -X
+[ipvsadm -C]
+删除节点上进行清理
+kubeadm reset
+
+
+
+从控制平面节点以外的计算机控制群集
+scp root@<control-plane-host>:/etc/kubernetes/admin.conf .
+kubectl --kubeconfig ./admin.conf get nodes
+
+
+使主节点也可以调度pod
+kubectl taint nodes --all node-role.kubernetes.io/master-
+
+
+手动拉去control-plane 所需要的镜像
+kubeadm config images list
+kubeadm config images pull
