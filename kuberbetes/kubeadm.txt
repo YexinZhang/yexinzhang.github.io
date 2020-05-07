@@ -1,0 +1,104 @@
+- kubeadm init
+    kubeadm init to bootstrap a Kubernetes control-plane node
+    executex following phases:
+        1. preflight
+        2. kubelet-start: Writing kubelet settings and (re)start kubelet
+        3. certs:
+            a. 生成自签的CA，为其他服务提供验证
+            b. 给其他组件提供身份认证: apiserver,apiserver-kubelet-client,front-proxy-ca,front-proxy-client,etcd...,sa
+                /ca                          Generate the self-signed Kubernetes CA to provision identities for other Kubernetes components
+                /apiserver                   Generate the certificate for serving the Kubernetes API
+                /apiserver-kubelet-client    Generate the certificate for the API server to connect to kubelet
+                /front-proxy-ca              Generate the self-signed CA to provision identities for front proxy
+                /front-proxy-client          Generate the certificate for the front proxy client
+                /etcd-ca                     Generate the self-signed CA to provision identities for etcd
+                /etcd-server                 Generate the certificate for serving etcd
+                /etcd-peer                   Generate the certificate for etcd nodes to communicate with each other
+                /etcd-healthcheck-client     Generate the certificate for liveness probes to healthcheck etcd
+                /apiserver-etcd-client       Generate the certificate the apiserver uses to access etcd
+                /sa                          enerate a private key for signing service account tokens along with its public key
+        4. kubeconfig: 生成control plane and admin的配置文件
+            a. admin
+            b. kubelet
+            c. controller-manager
+            d. scheduler
+        5. control-plane: 生成建立控制平面所需的所有静态Pod清单文件
+            a. apiserver
+            b. controller-manager
+            c. scheduler
+        6. etcd: etcd 静态pod清单
+            a. 为本地单节点本地etcd实例生成静态Pod清单文件
+        7. upload-config: upload the kubeadm and kubelet config to ConfigMap
+        8. upload-certs: 上传证书到kubeadm-certs
+        9. mark-control-plane: 标记节点为control-plane
+        10. bootstrap-token: Generates bootstrap token used to join a node to cluster
+        11. kubelet-finalize: TLS引导后，更新与kubelet相关的设置
+            启用kubelet客户端证书轮换
+        12. addon: install required addons for k8s cluster
+            a. croedns
+            b. kube-proxy
+
+    command: kubeadm init [flags]
+
+        -apiserver-advertise-address string
+            apiserver 监听的IP地址
+        -apiserver-bind-port int32     Default: 6443
+       
+        -cert-dir Default: “/etc/kubernetes/pki”
+
+        -certificate-key string
+
+        -config: kubeadm config file
+
+        -control-plane-endpoint string: 为控制平面指定稳定ip或者dns名称o
+
+        -cri-socket cri的套接字路劲
+
+        -dry-run
+
+        -ignore-preflight-errors stringSlice
+            忽略启动前的检查错误，比如swap的开关，是否特权用户  
+        
+        -image-repository  Default: "k8s.gcr.io"
+            Choose a container registry to pull control plane images from
+
+        -node-name
+
+        -pod-network-cidr: 容器网络域间路由 一般配合网络插件使用 比如为calico 192.168.0.0/16
+
+        -token-ttl duration Default: 24h0m0s
+            e.g. 1s, 2m,3h... 0表示永不过期
+
+        -upload-certs:
+            Upload control-plane certificates to the kubeadm-certs Secret.
+
+
+
+    kubeadm init phase 分阶段创建control-plane
+        
+
+
+- kubeadm join
+    bootstrap a k8s worker node or control-plane node and adds it into cluster.
+    worker node:
+        1. download necessary information from api server.
+        2. start tls bootstraping process.
+            worker node do:
+            - TLS引导程序使用共享令牌临时向Kubernetes API服务器进行身份验证以提交证书签名请求（CSR）；默认情况下，控制平面会自动签署此CSR请求。
+            control plane node do:
+            - 从集群下载在控制平面节点之间共享的证书（如果用户明确要求的话）。 
+            - 生成控制平面组件清单，证书和kubeconfig。
+            - 添加新的本地etcd成员。 
+            - 将此节点添加到kubeadm群集的ClusterStatus。
+
+    关闭客户端证书的自动批准:
+        kubectl delete clusterrolebinding kubeadm:node-autoapprove-bootstrap
+        之后，kubeadm的加入将被阻止，直到管理员手动批准飞行中的CSR
+        kubectl get csr
+        NAME                                                   AGE       REQUESTOR                 CONDITION
+        node-csr-c69HXe7aYcqkS1bKmH4faEnHAWxn6i2bHZ2mD04jZyQ   18s       system:bootstrap:878f07   Pending
+        批准:
+        kubectl certificate approve node-csr-c69HXe7aYcqkS1bKmH4faEnHAWxn6i2bHZ2mD04jZyQ
+
+    Turning off public access to the cluster-info ConfigMap
+    关闭集群信息ConfigMap的公共访问
