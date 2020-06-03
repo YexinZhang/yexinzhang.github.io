@@ -1,5 +1,15 @@
 Ansible Module
 
+常用的setup变量
+    ansible_nodename
+    ansible_hostname
+    ansible_fqdn
+    ansible_default_ipv4.address
+    ansible_bios_version
+    ansible_architecture:  x86_64 | aarch64
+    ansible_os_family: "Debian"
+    ansible_pkg_mgr: "apt"
+    ansible_lsb.codename: 'jessie|buster'
 template:
     attributes: 文件的属性, 可以使用man chattr 查看具体的选项
     backup: 是否备份
