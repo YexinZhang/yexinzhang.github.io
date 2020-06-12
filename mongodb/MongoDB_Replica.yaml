@@ -135,3 +135,21 @@ Replica Set Deployment Architectures:
 
     Load balance On read-heavy Deployment:
       In a deployment with very high rea traffic, you can improve read throughput by distributing reads to secondary members.
+
+
+给集群内的机器打上标签，以实现read reference
+
+cfg = rs.conf()
+cfg.members[1].tags = {"tag1":"value","tag2 ":"value"....}
+rs.reconfig(cfg)
+
+
+检查当前复制滞后时间：
+  rs.printSlaveReplicationInfo()
+    source: 10.246.197.84:27019
+      syncedTo: Fri Jun 05 2020 10:35:38 GMT+0800 (CST)
+      0 secs (0 hrs) behind the primary
+    source: 10.246.195.195:27020
+      syncedTo: Fri Jun 05 2020 10:35:38 GMT+0800 (CST)
+      0 secs (0 hrs) behind the primary
+
