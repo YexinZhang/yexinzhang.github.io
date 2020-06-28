@@ -8,11 +8,12 @@ mongod --auth 开启认证模式
 2. 创建user.
     db.createUser(
         {
-            user: "qatest",
-            pwd: "N2RiMzcyZTA5MAo=",
+            user: "myUserAdmin",
+            pwd: "fzDtpvOY3AyD5g==",
             roles: [ 
                     { role: "userAdminAnyDatabase" , db: "admin" },
                      "readWriteAnyDatabase",
+                     "clusterAdmin"
                    ]
         }
     )

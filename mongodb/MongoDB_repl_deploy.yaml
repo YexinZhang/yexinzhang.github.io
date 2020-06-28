@@ -164,3 +164,28 @@ oplog的压缩:
 - new primary诞生
   不需要等待10秒
     db.adminCommand({replSetStepDown: 86400, force: 1})
+
+
+
+rs.initiate(
+  {
+    _id: "config",
+    configsvr: true,
+    members: [
+      { _id : 0, host : "127.0.0.1:27001" },
+      { _id : 1, host : "127.0.0.1:27002" },
+      { _id : 2, host : "127.0.0.1:27003" }
+    ]
+  }
+)
+
+rs.initiate(
+  {
+    _id : "shard_01",
+    members: [
+      { _id : 0, host : "127.0.0.1:27004" },
+      { _id : 1, host : "127.0.0.1:27005" },
+      { _id : 2, host : "127.0.0.1:27006" }
+    ]
+  }
+)

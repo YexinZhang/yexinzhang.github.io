@@ -1,0 +1,19 @@
+
+mongoexport
+
+    sharding cluster:
+        mongoexport --uri="mongodb://myUserAdmin:PASSWORD@10.246.195.195:27017/DATABASE?authSource=admin" --collection=hello --out=events.json
+        --uri 中包含database时， 不能和--db连用
+        [--jsonformat=canonical]
+            canonical mode:
+                {"_id":{"$numberDouble":"1.0"},"volume":{"$numberLong":"2980000"},"date":{"$date":{"$numberLong":"1565363188675"}}}
+            Relaxed mode:
+                {"_id":1.0,"volume":2980000,"date":{"$date":"2019-08-05T16:18:29.559Z"}}
+        [--fields=<field1[,field2]>] 字段级别
+            --fields=name,address
+        [--type=csv]
+        [--fieldFile=fields.txt]
+            cat fields.txt
+            name
+            address
+        
