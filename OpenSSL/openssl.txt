@@ -17,6 +17,9 @@ OpenSSL Architecure
     c. SSL/TLS test tools
     d. ASN.1 编码规范
 
+存储格式:
+    PEM: 文本
+
 RSA------
 To generate an RSA key, use genrsa command
 
@@ -66,3 +69,135 @@ L = HZ
 ST = ZJ
 C = CN
 EOF
+
+当我们拥有csr文件时，我们可以自己签署
+openssl x509 -req -days 3650 -in nginx.csr -signkey nginx.key -out nginx.crt
+
+直接使用密钥生成证书
+$ openssl req -new -x509 -days 365 -key fd.key -out fd.crt
+不需用回答问题
+$ openssl req -new -x509 -days 365 -key fd.key -out fd.crt \
+ -subj "/C=GB/L=London/O=Feisty Duck Ltd/CN=www.feistyduck.com"
+-----> subj 对应的内容   
+    Signature Algorithm: ecdsa-with-SHA256
+        Issuer: C=CN, ST=ZJ, L=HZ, O=NETEASE, OU=OPS, CN=zyxasr.com/emailAddress=zyxasr@qq.com
+
+创建对多个主机名有效的证书
+编写需要添加的域名文件 
+cat > xxx.txt  << EOF
+subjectAltName = DNS:*.feistyduck.com, DNS:feistyduck.com
+EOF
+    在签署的时候加上选项
+    openssl x509 -req -days 365 \
+    -in fd.csr -signkey fd.key -out fd.crt \
+    -extfile fd.ext
+
+
+-----
+检验证书
+ openssl x509 -text -in fd.crt -noout
+ -text: print certificate contents 
+ -noout: 可以通过不输出编码证书本身来减少混乱，
+
+
+
+-------
+密钥和证书的转换
+证书格式:
+    Binary(DER) certificate
+        Contains an X.509 certificate in its raw form, using DER ASN.1 encoding.
+    ASCII(PEM) certificate(s)
+        Contains a base64-encoded DER certificate with --BEGIN CERTIFICATE --- and --END CERTIFICATE---
+        通常，每个文件只显示一个证书，尽管某些程序根据上下文允许一个以上的证书
+        例如，较早的Apache Web服务器版本要求服务器证书必须在一个文件中单独存在，而所有中间证书在另一个文件中应同时存在。
+    PKCS#7 certificate
+        RFC 2315中定义了一种用于传输签名或加密数据的复杂格式。通常以.p7b和.p7c扩展名出现，并且可以根据需要包括整个证书链。
+        Java的keytool实用程序支持这种格式。
+
+key格式:
+    DER 
+        Contains a private key in its raw form, using DER ASN.1 encoding
+        OpenSSL以其自己的传统（SSLeay）格式创建密钥。还有一种称为PKCS＃8的替代格式（在RFC 5208中定义），但并未广泛使用。 
+        OpenSSL可以使用pkcs8命令在PKCS＃8格式之间进行转换。
+
+    PEM
+        包含base64编码的DER密钥，有时还包含其他元数据（例如，用于密码保护的算法）。
+
+
+PKCS#12(PFX) key and certificate(s)
+    可以存储和保护服务器密钥以及整个证书链的复杂格式, .p12和.pfx扩展名很常见。此格式通常在Microsoft产品中使用，但也用于客户端证书。
+    如今，PFX名称已用作PKCS＃12的同义词，即使PFX在很久以前就使用另一种格式（PKCS＃12的早期版本）也是如此。您不太可能在任何地方遇到旧版本。
+
+
+
+PEM and DER conversion
+    将pem转化成为der
+    openssl x509 -inform PEM -in ec2.crt -outform DER -out ec2.der
+    pem格式的证书只是der的证书经过base64编码后，加上页眉页脚转化而成
+    我们查看 pem格式的ec2.crt :
+        -----BEGIN CERTIFICATE-----
+        MIICEjCCAbigAwIBAgIJAL0+a8xPC8n5MAoGCCqGSM49BAMCMHoxCzAJBgNVBAYT
+        AkNOMQswCQYDVQQIDAJaSjELMAkGA1UEBwwCSFoxEDAOBgNVBAoMB05FVEVBU0Ux
+        DDAKBgNVBAsMA09QUzETMBEGA1UEAwwKenl4YXNyLmNvbTEcMBoGCSqGSIb3DQEJ
+        ARYNenl4YXNyQHFxLmNvbTAeFw0yMDA1MDExNDI0NDhaFw0zMDA0MjkxNDI0NDha
+        MHoxCzAJBgNVBAYTAkNOMQswCQYDVQQIDAJaSjELMAkGA1UEBwwCSFoxEDAOBgNV
+        BAoMB05FVEVBU0UxDDAKBgNVBAsMA09QUzETMBEGA1UEAwwKenl4YXNyLmNvbTEc
+        MBoGCSqGSIb3DQEJARYNenl4YXNyQHFxLmNvbTBZMBMGByqGSM49AgEGCCqGSM49
+        AwEHA0IABGEeQHy4GRf4ivv6e0QmY/DJkgYhE72uiMTPMnuNwumLt75hm7NUumKT
+        plIVF70QyUphvjsiS0Vu8GnDihCr0hyjJzAlMCMGA1UdEQQcMBqCDCouenl4YXNy
+        LmNvbYIKenl4YXNyLmNvbTAKBggqhkjOPQQDAgNIADBFAiEAlFt71jr2xUVqACdV
+        dD7oqqU6qH8cxzHSItT8eDSgTgECIAoRbk3g+pe3ERH41ZZl+xz9xdc1L33MTlHS
+        WilK1mug
+        -----END CERTIFICATE-----
+    我们将生成的ec2.der文件base64编码, 将会得到与pem格式大同小异的输出
+        cat ec2.der | base64
+        MIICEjCCAbigAwIBAgIJAL0+a8xPC8n5MAoGCCqGSM49BAMCMHoxCzAJBgNVBAYTAkNOMQswCQYD
+        VQQIDAJaSjELMAkGA1UEBwwCSFoxEDAOBgNVBAoMB05FVEVBU0UxDDAKBgNVBAsMA09QUzETMBEG
+        A1UEAwwKenl4YXNyLmNvbTEcMBoGCSqGSIb3DQEJARYNenl4YXNyQHFxLmNvbTAeFw0yMDA1MDEx
+        NDI0NDhaFw0zMDA0MjkxNDI0NDhaMHoxCzAJBgNVBAYTAkNOMQswCQYDVQQIDAJaSjELMAkGA1UE
+        BwwCSFoxEDAOBgNVBAoMB05FVEVBU0UxDDAKBgNVBAsMA09QUzETMBEGA1UEAwwKenl4YXNyLmNv
+        bTEcMBoGCSqGSIb3DQEJARYNenl4YXNyQHFxLmNvbTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IA
+        BGEeQHy4GRf4ivv6e0QmY/DJkgYhE72uiMTPMnuNwumLt75hm7NUumKTplIVF70QyUphvjsiS0Vu
+        8GnDihCr0hyjJzAlMCMGA1UdEQQcMBqCDCouenl4YXNyLmNvbYIKenl4YXNyLmNvbTAKBggqhkjO
+        PQQDAgNIADBFAiEAlFt71jr2xUVqACdVdD7oqqU6qH8cxzHSItT8eDSgTgECIAoRbk3g+pe3ERH4
+        1ZZl+xz9xdc1L33MTlHSWilK1mug
+
+    PKCS#12 CONVERSION
+    pem --> pkcs#12
+    openssl pkcs12 -export -name "My Certificate"  -out fd.p12  -inkey fd.key  -in fd.crt
+    pkcs#12 --> pem
+    openssl pkcs12 -in fd.p12 -out fd.pem -nodes
+    转换后的fd.pem 包含了密钥，证书以及可能的中间证书，所以需要手动的剥离
+
+
+    PKCS#7
+    pem --> pkcs#7
+    openssl crl2pkcs7 -nocrl -out fd.p7b -certfile fd.crt -certfile fd-chain.crt
+
+    
+
+-----------Configuration
+获取支持的套件列表
+openssl ciphers -v 'ALL:COMPLEMENTOFALL' 
+
+每一行包含的信息
+Suite name
+Required minimum protocol version
+Key exchange algorithm
+Authentication algorithm
+Cipher algorithm and strength
+MAC (integrity) algorithm
+Export suite indicator
+
+openssl ciphers -v 'RSA'
+
+组合关键字
+openssl ciphers -v 'RC4+SHA'
+
+The weak suites can be identified with the following cipher strings:
+aNULL; no authentication
+eNULL; no encryption
+LOW; low-strength suites
+3DES; effective strength of 108 bits
+MD5; suites that use MD5
+EXP; obsolete export suites

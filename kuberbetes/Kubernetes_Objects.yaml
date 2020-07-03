@@ -7,3 +7,37 @@ Understanding k8s objects:
   3. 这些容器表现出来的策略，比如重启，更新，容错
 
 
+Kubernetes Master:
+  kube-apiserver
+  kube-controller-manager
+  kube-scheduler
+none-master-node:
+  kubelet: which communicate with the kubernetes master
+  kube-proxy: a network proxy which reflects kubernetes networking service on each node
+
+
+Contril plane:
+  kube-apiserver
+  kube-scheduler
+  etcd
+  kube-controller-manager (to reduce the complexity, complied into a single binary)
+    incluse:
+      Node Controller: 负责节点发生故障时的通知和响应
+      Replication Controller: 维护pod复制的正确数量
+      Endpoints controller: 填充Endpoints对象（即，加入Services＆Pods）。
+      Service account & Token controller: 服务帐户和令牌控制器：为新的名称空间创建默认帐户和API访问令牌。
+  cloud-controller-manager
+
+
+Node components
+  kubelet:
+  kube-proxy: 
+  container runtime: 容器运行时是负责运行容器的软件
+
+
+YamL file require field:
+  apiVersion:
+  kind:
+  metadata:
+  spec:
+  

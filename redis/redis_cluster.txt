@@ -1,0 +1,10 @@
+redis cluster
+
+[consistency guarantees]
+
+redis并没有强一致性的保证，在一些特定情况之下，可能会发生丢失数据的风险, 比如下列情况
+    - a，b，c 三台redis的集群， 并且都有slave
+    - redis的replica是异步的
+    - 当我们的写操做写入到b的hash槽时，b会复制给b1（slave），但是b不会等待b1的确认写入信息
+    - client写入b，b确认写入时，再复制给b1之前，b崩溃了
+    - 这个时候b1会被提升为master，这就导致了数据的永久丢失

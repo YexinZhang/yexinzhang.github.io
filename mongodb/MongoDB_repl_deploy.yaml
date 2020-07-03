@@ -145,6 +145,47 @@ Force a Member to be Primary Usiong Database Commands
 
   1. In mongo shell, run rs.status() to ensure replica running as expected.
   2. In mdb2 mongod shell, run rs.freeze(120), freeze mdb2 so that it does not attempt to become primary 120s
-  3. In mdb0 shell, freeze(120) && step down this instance Using db.stepDwon(120).
+  3. In mdb0 shell, freeze(120) && step down this instance Using db.stepDwon(120). // it does not attempt to become primary for 120 seconds.
 
   mdb1 becomes primary
+
+oplog的压缩:
+  use local
+  db.runCommand({ "compact" : "oplog.rs" } )
+
+降级primary:
+  rs.stepDown(300)
+
+
+提高secondary优先级之后:
+- 三台机器默认每十秒更新同步一次信息
+- 当前的primary得知自己的优先级不是最大的时候，会stepdown
+  如果提高之后的sec的同步时间远远落后于，当前primary不会马上降级，会等待sec10秒，然后降级。并且没有primary的故障转移
+- new primary诞生
+  不需要等待10秒
+    db.adminCommand({replSetStepDown: 86400, force: 1})
+
+
+
+rs.initiate(
+  {
+    _id: "config",
+    configsvr: true,
+    members: [
+      { _id : 0, host : "127.0.0.1:27001" },
+      { _id : 1, host : "127.0.0.1:27002" },
+      { _id : 2, host : "127.0.0.1:27003" }
+    ]
+  }
+)
+
+rs.initiate(
+  {
+    _id : "shard_01",
+    members: [
+      { _id : 0, host : "127.0.0.1:27004" },
+      { _id : 1, host : "127.0.0.1:27005" },
+      { _id : 2, host : "127.0.0.1:27006" }
+    ]
+  }
+)

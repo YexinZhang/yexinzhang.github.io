@@ -1,0 +1,55 @@
+RDB:
+    By default, the redis saves the dataset snapshot on the disk, in binary file  called dump.rdb.
+    我们可以配置至少m次操作就会每n秒 save 数据集。使用命令save or bgsave
+    可以在redis.conf中指定:
+        save n m
+        save 60 1000 --> 1000次操作，60s复制一次
+    How it works:
+    - redis fork， 产生一个子线程和父线程
+    - 子线程开始往临时的rdb文件中写入数据集
+    - 当子线程完成写入之后，会 替换掉旧的dump.rdb文件
+
+    advantages：
+    - RDB文件是一个紧凑的单个文件，可以将rdb文件移动到别的目录下，已保存当前时间点的备份版本，用于恢复到不同的数据版本
+    - RDB最大限度的提高了redis的性能，因为只是fork了一个子进程，parent进程不会管理I/O disk操作，只会接受client的请求
+    disadvantages:
+    - 因为是按照时间点进行拍摄的快照，F即使有很多时间点，在redis突然停止，例如断电的时候，总会损失最新的数据
+    - fork() 进程在遇到大数据集时会非常的耗时，可能会导致redis停止服务一秒种以上。
+
+
+Append-only File
+    turn on the aof use: "appendonly yes"
+    From now on,每当redis收到更改带数据集的指令时，都会将其追加之AOF文件之中。当我们重启redis时，将会利用aof 文件恢复状态.
+    Log rewriting
+       所有的更改指令都会追加到aof中，但是有些情况，比如我们修改了100次某一个key的值，我们会在aof中保存100次的修改，但是真正会使用的
+       数据只是最新的那一个key，这个时候 ，我们就可以通过`bgrewriteaof`指令根据内存中的数据重新构造aof文件. redis 2.4以后会自动触发`
+    aof 频率设置:
+    - appendfsync always    fsync every time, 每一次写操作都会追加至aof文件之中，非常慢但非常安全
+    - appendfsync everysec  每一秒追加，2.4以后可以与rdb速度相似，发生意外会损失一秒钟的数据
+    - appendfsync no        Never fsync, 更快，更不安全大的方法，通常30s刷新一次数据，通常取决于内核调度
+
+    advantages：
+    - much persistence policies, always, everysec, no , the default is everysec.
+    - AOF只是追加日志，当命令写入被截断时（比如磁盘满了）， 可以使用 redis-check-aof tool恢复
+    - 自动整理过大的aof文件
+    disadvantages:
+    - aof files are usually bigger than rdb files with the same datasets
+    - aof can be slower than rdb depending
+    - 一些redis 指令可能会导致AOF在重载时无法重现相同的数据集, redis每一次重写aof，都是重头开始写
+
+    How it works:
+    - redis fork , 我们就会有child and parent process
+    - child starts writing the new AOF in temporary file
+    - 父进程计算新的更改写入到内存缓冲中，同时将新中的更改写入到旧的AOF文件中
+    - 当子进程完成aof文件的写入时，父进程会得到一个signal，然后父进程会将缓冲在内存中的新的更改指令追加到新的aof文件中
+    - redis原子的将旧文件命名为新文件，并且开始往新文件中添加数据
+
+
+Backing up redis data:
+    我们可以在数据库运行时进行复制rdb文件，RDB文件一旦生成就不会更改，在生成snapshot时，会使用一个临时的名称，仅当snapshot生成完成时
+redis才会使用rename(2)原子性的更改文件名称并替换文件。
+    - 我们可以创建一些cron任务，每小时复制一次rdb文件，然后再每一天复制一次rdb文件
+    - 我们还需要删除一些过于陈旧的rdb文件
+    - 可以考虑异地保存，防止数据中心事故
+
+    使用aof也可以复制，只不过会少一部分数据

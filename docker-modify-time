@@ -1,0 +1,3 @@
+https://github.com/wolfcw/libfaketime
+apt-get install libfaketime
+docker run -v /usr/lib/x86_64-linux-gnu/faketime/libfaketime.so.1:/libfaketime.so -e LD_PRELOAD=/lib/libfaketime.so -e FAKETIME=+15d
