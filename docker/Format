@@ -1,0 +1,37 @@
+Format command and log output
+
+join concatenates a list of strings to create a single string. It puts a separator between each element in the list.
+
+    docker inspect --format '{{join .Args " , "}}' container
+
+table specifies which fields you want to see its output.
+
+    docker image list --format "table {{.ID}}\t{{.Repository}}\t{{.Tag}}\t{{.Size}}"
+
+json encodes an element as a json string.
+
+    docker inspect --format '{{json .Mounts}}' container
+
+lower transforms a string into its lowercase representation.
+
+    docker inspect --format "{{lower .Name}}" container
+
+split slices a string into a list of strings separated by a separator.
+
+    docker inspect --format '{{split .Image ":"}}'
+
+title capitalizes the first character of a string.
+
+    docker inspect --format "{{title .Name}}" container
+
+upper transforms a string into its uppercase representation.
+
+    docker inspect --format "{{upper .Name}}" container
+
+println prints each value on a new line.
+
+    docker inspect --format='{{range .NetworkSettings.Networks}}{{println .IPAddress}}{{end}}' container
+
+To find out what data can be printed, show all content as json:
+
+    docker container ls --format='{{json .}}

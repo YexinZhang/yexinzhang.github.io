@@ -1,0 +1,212 @@
+
+非主流构建方法:
+    从stdin构建，上下文为本地的文件夹
+        # create a directory to work in
+        mkdir example
+        cd example
+
+        # create an example file
+        touch somefile.txt
+
+        # build an image using the current directory as context, and a Dockerfile passed through stdin
+        docker build -t myimage:latest -f- . <<EOF
+        FROM busybox
+        COPY somefile.txt .
+        RUN cat /somefile.txt
+        EOF
+    上下文为远程git
+        docker build -t xxx:latest -f- https://github.com/containous/traefik.git << EOF
+        FROM busybox
+        COPY tools.go /path/to/somewhere
+        RUN cat /path/to/tools.go
+        EOF
+         
+
+多阶段构建
+    说白了就是 在dockerfile 中写入多个FROM 字段
+    每个from字段以及随后的命令可以抽象为一个大的阶段，虽然docker在build的时候不会这么认为
+
+    我们可以在后面的阶段引用前一阶段构建出来的应用程序，或者时配置文件
+        ---------- AS 可以指定名称，方便引用
+        FROM golang:1.7.3 AS builder
+        WORKDIR /go/src/github.com/alexellis/href-counter/
+        RUN go get -d -v golang.org/x/net/html  
+        COPY app.go    .
+        RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
+
+        FROM alpine:latest  AS haha
+        RUN apk --no-cache add ca-certificates
+        WORKDIR /root/
+        ----------在这里就可以引用builder构建出来的app应用
+        COPY --from=builder /go/src/github.com/alexellis/href-counter/app .
+        CMD ["./app"]
+    如果我们指向构建某一阶段，我们可以在build时添加指定的选项--target
+        docker build --target builder [--target qq] -t haha:v2 .
+
+    我们也可以从别的镜像中获取资源
+        COPY --from=nginx:latest /etc/nginx/nginx.conf /nginx.conf
+
+
+最小化层数
+    只有COPY,RUN,ADD 会增加层数
+    
+    对于ADD和COPY指令，将检查图像中文件的内容，并为每个文件计算一个校验和。这些校验和中不考虑文件的最后修改时间和最后访问时间。
+    在高速缓存查找期间，将校验和与现有映像中的校验和进行比较。如果文件中的任何内容（例如内容和元数据）发生了更改，则缓存将无效。
+
+
+Dockerfile 
+解析器指令
+    # directive=value1
+    # directive=value2
+    最好放置在Dockerfile的顶部, 无法使用行继续，无法出现两次, 无法出现在真正的注释之后
+
+    可以使用的指令:
+        syntax 需要开启buildkit
+        escape 
+    通常不会使用
+
+Environment replacement
+    可以在Docker使用变量，甚至还附带一些bash的修饰符
+    ${variable_name}
+        ${variable_name:-word}
+            ${variable:-word} indicates that if variable is set then the result will be that value. 
+            If variable is not set then word will be the result.
+        ${variable_name:+word}
+            ${variable:+word} indicates that if variable is set then word will be the result, 
+            otherwise the result is the empty string.
+    可以使用'\' 来转义$变量，使其使用字面意思 \${foo}|\$foo  ==> $foo != /bar
+    FROM busybox
+    ENV foo /bar
+    WORKDIR ${foo}   # WORKDIR /bar
+    ADD . $foo       # ADD . /bar
+    COPY \$foo /quux # COPY $foo /quux    ENV foo /bar 
+    变量支持以下的指令
+        ADD
+        COPY
+        ENV
+        EXPOSE
+        FROM
+        LABEL
+        STOPSIGNAL
+        USER
+        VOLUME
+        WORKDIR
+        ONBUILD 
+
+FROM
+
+    FROM [--platform=value] image[:tag] [AS <NAME>]
+    FROM 前面还能添加ARG参数，
+    但是添加在FROM前面的ARG参数，是处于image构建过程之外的参数，所以FROM后面的指令并不能使用
+    example:
+        ARG VERSION=stretch
+        ARG VERSION=buster   // 生效
+        FROM debian:${VERSION}
+        RUN  mkdir /APP
+        ARG VERSION=buster
+        ARG VERSION=shabi  // 生效
+        RUN echo ${VERSION} > /APP/echos
+        RUN cat /APP/echos
+
+RUN
+
+    Run has 2 forms:
+        shell: default --> /bin/sh -c
+        exec: ["executable","parm1","parm2"]
+    
+CMD
+
+    The CMD instuction has three forms:
+        CMD ["executable","param1","param2"] (exec form, this is the preferred(首选) form)
+        CMD ["param1","param2"] (as default parameters to ENTRYPOINT)
+        CMD command param1 param2 (shell form) /bin/sh -c
+    There can only be one CMD instruction in a Dockerfile. If you list more than one CMD then the last CMD will take effect
+    exec form 被解析成json数组格式时，必须使用双引号，而不能使用单引号.
+
+    不要将RUN与CMD混淆。 RUN实际上运行命令并提交结果。 CMD在生成时不执行任何操作，但会指定映像的预期命令。
+
+LABEL
+
+    LABEL <key>=<value> <key>=<value> <key>=<value> ...
+    The LABEL instruction adds the metadata to an image.
+    example:
+        LABEL "com.example.vendor"="ACME Incorporated"
+        LABEL com.example.label-with-value="foo"
+        LABEL version="1.0"
+        可以用反斜杠换行
+        LABEL description="This text illustrates \
+        that label-values can span multiple lines."
+
+    LABEL设置的数据，可以使用docker inspect 查看
+
+EXPOSE
+
+    EXPOSE <port> [<port>/<protocol>...]
+
+
+ENV
+
+    ENV <key> <value>
+        第一个单词之后的所有内容都是value
+    ENV <key>=<value> ...
+    
+    The environment variables set using ENV will persist when a container  is run from the resulting image.
+    在命令行中指定会改变 --env key=value 
+
+ADD
+    ADD [--chown=<user>:<group>] <src>... <dest>
+    ADD [--chown=<user>:<group>] ["<src>",... "<dest>"]
+
+
+COPY
+
+    COPY [--chown=<user>:<group>] <src>... <dest>
+    COPY [--chown=<user>:<group>] ["<src>",... "<dest>"]
+
+
+ENTRYPOINT
+
+    ENTRYPOINT ["executable", "param1", "param2"]
+    ENTRYPOINT command param1 param2
+        Shell形式可防止使用任何CMD或运行命令行参数
+        缺点是，entrypoint 会被启动为shell的子进程，不会被接收信号，
+        这意味着可执行文件将不是容器的PID 1，并且将不会接收Unix信号，
+        因此您的可执行文件将不会从docker stop <container>接收到SIGTERM。
+    docker run --entrypoint  
+    可选的启动文件写法
+        #!/usr/bin/env bash
+        set -e
+        if [ "$1" = 'postgres' ]; then
+            chown -R postgres "$PGDATA"
+
+            if [ -z "$(ls -A "$PGDATA")" ]; then
+                gosu postgres initdb
+            fi
+
+            exec gosu postgres "$@"
+        fi
+
+        exec "$@"
+
+USER
+
+    USER UID[:GID]
+    可以使用用户名或者uid，使用用户名时，必须先有用户，使用uid则无所谓
+
+WORKDIR
+
+    The WORKDID instruction sets the working directory for any RUN, CMD, ENTRYPOINT, COPY and ADD.
+    if the workdir doesn't exist, it will be created.
+    workdir 可以指定很多次，如果时相对路径，则本次workdir会是相对于上一个workir的路径
+    example:
+        WORKDIR /a
+        WORKDIR b
+        WORKDIR c
+        RUN app
+        ---> 运行 /a/b/c/app
+    WORKDIR 可以使用前面 env 显式设定的环境变量
+
+ARG
+    ARG指令定义了一个变量，用户可以在构建时使用--build-arg <varname> = <value>标志使用docker build命令将其传递给构建器
+    KEY[=VALUE]
+    ENV 总是会覆盖ARG的值

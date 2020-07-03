@@ -1,0 +1,17 @@
+prune images
+
+    docker image prune [--filter "until=24h"]  清理未使用的镜像.
+    docker image only cleans up dangling images, 
+    A dangling image is one that is not tagged and is not referenced by any container.
+    docker image prune -a 全删，除了正在使用的
+
+    docker container prune [ -f | --force ] [--filter "until=24h"] 删除关闭的容器
+
+    docker volume prune
+    docker volume prune --filter "label!=keep"
+    docker network prune [ --filter "until=24h" ]
+
+    prune everything
+
+    docker system prune (images, containers, and networks except volumes) 我们必须使用 --volumes
+    

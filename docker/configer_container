@@ -1,0 +1,30 @@
+- Start container automatically
+    
+    --live-restore flag of dockerd 可以允许我们在dockerd挂掉的情况下让容器继续运行
+
+    restart policy
+        no
+        on-failure 如果容器由于错误而退出，请重新启动容器，该错误表示为非零退出代码
+        always  Always restart the container if it stops. 仅当非手动关闭时自动重启，比如kill -9 PID就不会重启
+        unless-stopped 与始终相似，除了在容器停止（手动或其他方式）时，即使重新启动Docker守护程序也不会重新启动容器。
+
+    note:
+        重新启动策略仅在容器成功启动后才生效。在这种情况下，成功启动意味着该容器已启动至少10秒钟，并且Docker已开始对其进行监视。
+        这样可以防止根本无法启动的容器进入重启循环。
+
+        如果您手动停止容器，则其重新启动策略将被忽略，直到Docker守护进程重新启动或手动重新启动容器为止。
+        这是防止重新启动循环的另一种尝试。
+
+        重新启动策略仅适用于容器。
+
+
+
+cgroup 
+
+    mem: Docker试图通过调整Docker守护程序上的OOM优先级来减轻这些风险，以使其比系统上其他进程更容易被杀
+    
+    限制容器对内存的访问 
+    b, k , m, g
+    -m or --memory=  容器可以使用的内存的最大值， 最小可以设置为4m
+    --memory-reservation	软限制， 不能超过--memory设置的值
+    --oom-kill-disable 取消oom后杀死容器

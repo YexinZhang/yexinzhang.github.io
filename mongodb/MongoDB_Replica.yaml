@@ -9,6 +9,7 @@ Replica Set Primary
 
 Replica Set Secondary
 	- priority 0 member is a member that cannot become primary and cannot trigger elections
+    可以承载数据，接受读请求，在选举中投票, 可以确认写关注为majority
 	- hidden Replica set Member 
 	  require priority 0 and cannot be primary
 	- delayed replica set member (延迟的副本集，可帮助恢复错误)

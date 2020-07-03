@@ -1,0 +1,18 @@
+introduction
+
+
+ceph-mon
+    monitor
+ceph-mgr
+    manager
+ceph-osd
+    store data
+    data replication
+ceph-mds
+    metadata server
+    代表Ceph文件系统存储元数据（即Ceph块设备和Ceph对象存储不使用MDS
+    Ceph元数据服务器允许POSIX文件系统用户执行基本命令（如ls，find等），而不会给Ceph存储集群带来巨大负担。
+
+
+
+Monitor BOOTSTRAPPING
