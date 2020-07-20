@@ -1,0 +1,17 @@
+[删除pod]
+
+1. 用户发送删除指令，默认的删除宽限期限为30s
+2. API server在超过默认期限之后将Pod视为'dead'
+3. client 调用查看pod命令时，会显示 'Terminating'
+4. (与3同时),当Kubelet由于设置了2中的时间而看到Pod已被标记为终止时，它将开始Pod关闭过程。
+    a. 如果容器有 preStop hook， 则在容器中调用此挂钩. 如果超过默认宽限期限，hook仍没有完成，
+        则会以两秒的默认期限重复 step 2. 我们可以通过调节 terminationGracePeriodSeconds 参数
+        如果hook会执行很长时间的话
+    b. 向容器发送TERM信号，如果容器有关闭的顺序要求，则容器不会再同一时间收到term信号
+5. (与3同时), 已将Pod从端点列表中删除以进行服务，并且不再将其视为正在运行的用于复制控制器的Pod集合的一部分。
+    缓慢关闭的Pod无法继续为流量提供服务，因为负载均衡器（如服务代理）会将其从轮换中删除。
+6. 超过了默认期限的话，所有在pod中的processes会收到kill signal.
+7. Kubelet将通过设置宽限期0（立即删除）来完成在API服务器上删除Pod的操作。该Pod从API中消失，并且在客户端中不再可见
+
+kubectl delete --grace-period=<seconds> 来调整默认期限
+

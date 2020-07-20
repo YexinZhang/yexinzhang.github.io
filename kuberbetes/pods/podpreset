@@ -1,0 +1,6 @@
+--- 
+将需要的信息在pod创建的时刻注入到pod内部, 
+The information can include secrets, volumes, volume mounts, and environment variables
+
+
+

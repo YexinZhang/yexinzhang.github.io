@@ -1,0 +1,14 @@
+Understanding init containers:
+
+	在应用程序容器启动之前启动的容器
+	- Init container always run to completion
+	- Init container must complete sucessesfully before the next one starts.
+
+	k8s 会在init容器启动失败之后，重复的重启init直到successfully, 如果Pod的重启策略为Never，则Kubernetes不会重新启动Pod.
+	
+
+	Difference from the regular containers.
+	对初始化容器的资源请求和限制的处理方式不同
+	do not support lifecycle, livenessProbe, readinessProbe, or startupProbe
+	多个init containers 顺序完成, 
+
