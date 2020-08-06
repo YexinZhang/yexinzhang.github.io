@@ -16,3 +16,48 @@ ceph-mds
 
 
 Monitor BOOTSTRAPPING
+    Ceph Monitors normally listen on port 3300 for v2 protocol and 6789 for v1
+
+密钥的生成
+
+    // This will clobber any existing /etc/ceph/client.admin.keyring file. 
+    管理员用户: ceph auth get-or-create client.admin mon 'allow *' mds 'allow *' mgr 'allow *' osd 'allow *' -o /etc/ceph/ceph.client.admin.keyring
+
+    // Create a keyring for your monitor cluster and generate a monitor secret key.
+    ceph-authtool --create-keyring /tmp/ceph.mon.keyring --gen-key -n mon. --cap mon 'allow *'
+
+    // 
+    cp /tmp/ceph.mon.keyring /var/lib/ceph/mon/$CLUSTERNAME-$HOSTNAME/keyring
+
+    // {$id} --> $HOSTNAME MGR
+    ceph auth get-or-create mgr.{$id} mon 'allow profile mgr' mds 'allow *' osd 'allow *' -o /var/lib/ceph/mgr/ceph-{$id}/keyring
+
+    // OSD
+    ceph auth get-or-create osd.{$id} mon 'allow rwx' osd 'allow *' -o /var/lib/ceph/osd/ceph-{$id}/keyring
+
+    // MDS
+    ceph auth get-or-create mds.{$id} mon 'allow rwx' osd 'allow *' mds 'allow *' mgr 'allow profile mds' -o /var/lib/ceph/mds/ceph-{$id}/keyring
+
+开启cephx
+    Enable cephx authentication by setting the following options in the [global] section of your Ceph configuration file:
+        auth cluster required = cephx
+        auth service required = cephx
+        auth client required = cephx
+
+
+
+BlueStore:
+    Direct management of storage devices. 
+        避免抽象层和复杂性带来的性能损失
+    Metadata management with RocksDB.
+        内嵌RocksDB key:value database 管理内部的元数据，
+        例如从对象名称到磁盘上块位置的映射
+    checksum
+        完整的数据和元数据校验和。默认情况下，所有写入BlueStore的数据和元数据都受到一个或多个校验和的保护。
+        未经验证，不会从磁盘读取任何数据或元数据或将其返回给用户
+    Inline compression
+        在数据写入disk之前可以选择进行压缩
+    Multi-device metadata tiering
+        多设备元数据分层。 BlueStore允许将其内部日志（预写日志）写入单独的高速设备（例如SSD，NVMe或NVDIMM），
+        以提高性能。如果有大量的快速存储可用，内部元数据也可以存储在更快的设备上。
+    Efficient copy-on-write. 
