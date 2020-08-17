@@ -23,7 +23,7 @@ kubeadm token create
 openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | \
    openssl dgst -sha256 -hex | sed 's/^.* //'
     结合起来就是：
-        kubeadm token create --print-join-command
+        kubeadm join HOST token create --print-join-command
 kubeadm join 192.168.213.131:6443 --token e6jjf0.ph94mhsxlg26o6y3 \
     --discovery-token-ca-cert-hash sha256:c925c0709e4babc29cb71e10520836e0681a18169e87f2b522145133952dbee8
     对于control-plane:
