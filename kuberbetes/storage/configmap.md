@@ -189,3 +189,22 @@ kubectl apply -k .
 
 output --> /path/to/config-file created
 ```
+
+我们看看其中的细节
+使用kustomization.yaml 生成的configmap会带一个随机的hash值
+kubectl get configmap
+NAME                              DATA   AGE
+dingni-xixi-277kdf4g9m            3      11s
+wocao-haha-hcg2452885             1      11s
+
+如果kustomization.yaml的一个configmap中含有多个files字段时, 会变成如下
+```
+data:
+  blue: |
+    color=blue
+  pink: |
+    color=pink
+  white: |
+    color=white
+kind: ConfigMap
+```
