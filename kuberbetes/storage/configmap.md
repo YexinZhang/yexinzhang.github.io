@@ -180,11 +180,17 @@ configMapGenerator:
   - server/config.json
 - name: dingni-xixi
   files:
-  - game/blue
+  - [Custom-defined-key --> <keyName>=]game/blue
+  # 我们也可以在其中添加自定义的key
   - game/pink
   - game/white
+- name: lamp-heihei # 也可以直接定义literal类型的内容
+  literals:
+  - special.color=blue
+  - special.flower=orchid
+  - special.generation=four
 
-Then:
+Then apply:
 kubectl apply -k .
 
 output --> /path/to/config-file created
@@ -207,4 +213,106 @@ data:
   white: |
     color=white
 kind: ConfigMap
+```
+
+#Use ConfigMap
+
+1. Define container environment variables using configMap data
+```
+    kubectl create configmap env-map --from-literal=special.color=blue
+```
+  将special.color的值定义在pod的yaml文件中, 并且分配给指定的环境变量
+```yaml
+    apiVersion: v1
+    kind: Pod
+    metadata:
+    name: new-env-pod
+    spec:
+    containers:
+    - name: new-env-container
+      image: busybox:latest
+      command: ["/bin/sh","-c","env"]
+      env:
+        # name 定义了环境变量在container中的名称
+        - name: SPECIAL_COLOR
+          valueFrom:
+            configMapKeyRef:
+              name: env-map
+              key: special.color
+    restartPolicy: Never
+```
+
+2. Define container environment variables with data from multiple ConfigMaps 
+``` yaml
+    spec: 
+    containers:
+    - name: newcontainer
+        image: busybox:latest
+        command: ["/bin/sh","-c","env"]
+        env:
+        - name: SPECIAL_COLOR
+            valueFrom:
+                configMapKeyRef:
+                name: CONFIG_MAP_NAME
+                key: configmap.data.字段
+        - name: SPECIAL_LOG_LEVEL
+            valueFrom:
+                configMapKeyRef:
+                name: CONFIG_MAP_NAME
+                key: configmap.data.字段
+        ...
+```
+
+3. config all key-value pairs in a configmap as container env variables
+
+```
+envFrom:
+- configMapRef:
+    name: CONFIGMAP_NAME
+```
+
+# ADD ConfigMap data to volume
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dapi-test-pod
+spec:
+  containers:
+    - name: test-container
+      image: k8s.gcr.io/busybox
+      command: [ "/bin/sh", "-c", "ls /etc/config/" ]
+      volumeMounts:
+      - name: config-volume
+        mountPath: /etc/config
+  volumes:
+    - name: config-vlume
+      configMap:
+        name: haha
+  restartPolicy: Never
+
+比如是configmap haha --from-literal=special.color=blue --> 
+会在/etc/config/目录底下生成文件名为special.color, 内容为blue的文件
+configmap 的key会成为文件的名称
+
+指定挂载后的名称 -->
+volumes:
+  - name: config-volume
+    configMap:
+      name: haha
+      items:
+      - key: special.color //configmap的key
+        path: keys // 传递到容器中的名称
+ls /etc/config 
+keys
+
+# 当我们使用--from-file 创建的configmap时，如果没有指定key, 则默认的key就是文件名称
+  可以使用 --from-file=<keyname>=filename 指定key
+```
+
+#### 热更configmap
+```
+可以使用 kubectl edit configmap CONFIGMAP_NAME
+修改后的configmap 无需重新挂载，k8s会自动检测configmap的变化，并修改
 ```
