@@ -1,0 +1,35 @@
+更加细粒化的一种权限规划方式
+可以细化到线程
+    进行特权操作时，检查线程是否具有该操作的cap
+    提供系统调用时，用于获取或者修改线程的cap
+线程的cap集合：
+    每个集合包含了若干的cap
+    Permitted
+        定义了线程所能拥有的特权的上限，是inheritable 和effective的超集
+    inheritable
+        当执行exec() 运行命令时，能够被新命令继承的cap
+    effective
+        内核检查线程是否具有特全操作的cap时，检查的就是这个集合中的内容。permitted定义了上限，线程可以删除添加effctive中
+        的某一个capabilities，如果后期需要的话，可以从permitted中恢复.
+查看
+    getcap [-v] [-r] [-h] filename [...]
+        -r  enables recursive search
+        -v  即使没有文件功能，也可以显示所有搜索到的条目
+        -h help usage
+    example :
+        getcap /bin/ping
+        /bin/ping = cap_net_raw+ep
+
+    cat /proc/PID/task/TID/status | grep -i cap
+    getpcaps PID 查看进程的cap
+
+修改
+    setcap [-q] [-v]    
+
+    setcap cap,cap{+ep|-ep} filepath
+    setcap cap_net_raw+ep /bin/ping 给ping命令添加cap
+    setcap cap_net_raw,cap_chown+ep /bin/ping 给ping命令添加多个cap
+
+    setcap cap_chown-ep 删除时好像会删除多个，虽然只是指定了一个
+
+
