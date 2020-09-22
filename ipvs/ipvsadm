@@ -1,0 +1,70 @@
+ipvsadm
+
+调度算法:
+    rr
+    wrr
+    lc
+    lblc
+    wlc
+    lblcr
+    dh
+    sh
+    sed
+    nq
+调度模式
+    -g gatewaying DR --> Direct Routing
+    -i ipip TUNNELING
+    -m masquerading NAT
+转发机制
+    NAT
+    TUNNELING
+    DR
+
+-w 权重
+
+
+定义 virtual server
+
+添加
+ipvsadm -A|-E -t|u|f service-address [-s scheduler] [-p timeout]
+
+删除
+ipvsadm -D -t|u|f service-address
+
+service-adress:
+    -t|u|f
+        t: tcp --> VIP:VIP_PORT
+        U: udp
+        f: 防火墙标记
+-s 调度算法
+    default --> wlc
+
+EXAMPLE:
+
+    Director server should run this command to forwarding the packets: 
+        echo "1" > /proc/sys/net/ipv4/ip_forward
+    The following commands configugre a Linux Director to disturibute incoming requets address to pot 80
+    on VIP equally to port on five real servers.
+    The forwarding method used in this example is NAT.
+
+    定义linux virtual server:
+    ipvaadm -A -t VIP:80 -s rr // 定义虚拟主机，此步需要制定后端realserver的调度算法
+    将real server 加入到 virtual server
+    ipvsadm -a -t VIP:80 -r real_addr:port -m  // -m 表示使用NAT模式作为转发机制
+    ...
+
+
+防火墙标记
+    modprobe ip_tables
+    eccho 1 > /proc/sys/net/ipv4/ip_forward
+    modprobe ip_vs_ftp
+    下面的例子将 请求发往 192.168.1.110 和 192.168.1.111的所有端口的请求包 转发到后端的realserver
+    先要在防火墙对相应地址范围打上标记
+    iptables -A PREROUTING -t mangle -d 192.168.1.110/31 -j MARK --set-mark 1
+
+    ipvsadm -A -f 1 -s rr 
+    ipvsadm -a -f 1 -r 192.168.1.101:0 -m
+    ipvsadm -a -f 1 -r 192.168.1.102:0 -m
+    ipvsadm -a -f 1 -r 192.168.1.103:0 -m
+
+    

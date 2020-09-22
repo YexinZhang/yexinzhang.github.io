@@ -15,3 +15,41 @@
 
 kubectl delete --grace-period=<seconds> 来调整默认期限
 
+[pod labels]
+--show-labels 
+修改现有的label
+kubectl label [--overwrite] (-f FILENAME | TYPE NAME) KEY_1=VAL_1 ... KEY_N=VAL_N
+
+
+
+[containter images]
+imagePullPolicy:
+    IfNotPresent: 本地没有才回去拉取
+    Always: 总是
+    如果没有指定，但是使用了tag为:latest的镜像，则总会去拉取
+    Never: 假设本地有，不在尝试去远程拉取
+当使用latest标签的镜像时，如果想一直使用同一版本的镜像，我们可以使用digest替代tag
+    nginx:latest:    
+        nginx@sha:256794275d96b4ab96eeb954728a7bf11156570e8372ecd5ed0cbc7280313a27d19
+
+[资源限制]    
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: frontend
+  labels:
+    app: nginx
+spec:
+  containers:
+  - name: app
+    image: nginx:1.19.2
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "250m"
+      limits:
+        memory: "250Mi"
+        cpu: "500m"
+    500m --> 0.5个cpu， 在云环境中相当于0.5个vcpu，超线程环境（几核几线程），相当于0.5个线程
+    

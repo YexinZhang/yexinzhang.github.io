@@ -20,7 +20,9 @@
         getcap /bin/ping
         /bin/ping = cap_net_raw+ep
 
-    cat /proc/PID/task/TID/status | grep -i cap
+    cat /proc/PID/status | grep -i cap
+    capsh  --decode=xxxxxx
+    可以将/proc/目录下的cap转换为可阅读的模式
     getpcaps PID 查看进程的cap
 
 修改
