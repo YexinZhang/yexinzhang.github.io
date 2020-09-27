@@ -3,20 +3,22 @@ package main
 import (
 	"fmt"
 	"go_dev/grpc_demo/pb"
+	"net"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
-	"net"
 )
 
-type msg struct {}
+type msg struct{}
+
 func (m *msg) SendT(q *pb.TestReQ, spres pb.SendTestMsg_SendTServer) error {
 	label := q.Label
 	fmt.Println(label)
 	for i := 1; i <= 100; i++ {
 		err := spres.Send(&pb.ResponsE{
 			Msg:    fmt.Sprintf("msg: %d\n", i),
-			Status: fmt.Sprintf("status: %d",i),
+			Status: fmt.Sprintf("status: %d", i),
 		})
 		if err != nil {
 			return err
@@ -32,7 +34,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	tls, err := credentials.NewServerTLSFromFile("/home/zhangyexin/ssl/grpc.crt","/home/zhangyexin/ssl/grpc.key")
+	tls, err := credentials.NewServerTLSFromFile("/home/zhangyexin/ssl/grpc.crt", "/home/zhangyexin/ssl/grpc.key")
 	if err != nil {
 		fmt.Println(err)
 		return
