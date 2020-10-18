@@ -1,0 +1,20 @@
+lambda express
+
+bultin func:
+    内置函数sigma计算运行平均值和标准偏差，并返回当前数据点远离平均值的标准偏差数
+    lambda: sigma("value") > 3.0
+
+
+
+TICKscript nodes:
+
+BatchNode:
+    属性方法: 
+        quiet(): 禁止来自此节点的所有错误记录事件。
+    chain methods:
+        deadman
+            检查的应该是指定的measurement的
+        query
+        stats
+    
+    
