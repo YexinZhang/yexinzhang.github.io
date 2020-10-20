@@ -1,0 +1,102 @@
+COUNT()
+	COUNT(Field_Name)
+	COUNT(/reguler_expression/)
+	COUNT(*)
+	// 以上三种用法 下面的函数基本都可以使用
+	返回非空字段值的数量。
+DISTINCT()
+	求不同值
+INTEGRAL() 求积分
+	INTEGRAL(Field, #[积分单位，通常取时间])
+	SELECT "water_level" FROM "h2o_feet" WHERE "location" = 'santa_monica' AND time >= '2019-08-18T00:00:00Z' AND time <= '2019-08-18T00:30:00Z'
+	name: h2o_feet
+	time                 water_level
+	----                 -----------
+	2019-08-18T00:00:00Z 2.352
+	2019-08-18T00:06:00Z 2.379
+	2019-08-18T00:12:00Z 2.343
+	2019-08-18T00:18:00Z 2.329
+	2019-08-18T00:24:00Z 2.264
+	2019-08-18T00:30:00Z 2.267
+	SELECT INTEGRAL("water_level") FROM "h2o_feet" WHERE "location" = 'santa_monica' AND time >= '2019-08-18T00:00:00Z' AND time <= '2019-08-18T00:30:00Z'
+	name: h2o_feet
+	time                 integral
+	----                 --------
+	1970-01-01T00:00:00Z 4184.82   
+	简单来说就是求个定积分  默认单位为秒, 00:00:00 到 00:30:00 之间为1800秒
+	所以，x轴为1800， 我们取y轴的值约等于2.343, 所以大致的积分就是2.324*1800 = 4217.4
+
+	> SELECT integral("water_level",1m) FROM "h2o_feet" WHERE "location" = 'santa_monica' AND time >= '2019-08-18T00:00:00Z' AND time <= '2019-08-18T
+	00:30:00Z'
+	name: h2o_feet
+	time                 integral
+	----                 --------
+	1970-01-01T00:00:00Z 69.747	
+	我们取积分单位为分钟， 所以x轴等于30，所以积分大致为69.747
+MEAN()
+	返回字段值的算术平均值（平均值）。
+		SELECT MEAN(*) FROM "h2o_feet"
+MEDIAN()
+	从字段值的排序列表中返回中间值。
+MODE()
+	返回字段值列表中最频繁的值。
+SPREAD()
+	返回最小和最大字段值之间的差。
+STDDEV()
+	返回字段值的标准差。
+SUM()
+	return the sum of field values
+
+
+
+SELECTORS
+
+BOTTOM()
+	返回最小的N个字段值。
+	BOTTOM(field_key,N)
+	BOTTOM(field_key,tag_key(s),N)
+		返回标签键的N个标签值的最小字段值。
+		SELECT BOTTOM("water_level","location",2) FROM "h2o_feet"
+		返回与location相关联的两个最小值, 
+		name: h2o_feet
+		time                   bottom   location
+		----                   ------   --------
+		2015-08-29T10:36:00Z   -0.243   santa_monica
+		2015-08-29T14:30:00Z   -0.61    coyote_creek
+	BOTTOM(field_key,N),tag_key(s),field_key(s)
+		SELECT BOTTOM("water_level",2),"location","level description" FROM "h2o_feet"  
+		注意，tag不在括号里面
+FIRST()
+	Returns the field value with the oldest timestamp.
+	FIRST(field_key),tag_key(s),field_key(s)
+	可以指定由tag，field组成的最老的字段
+
+LAST()
+	最新的时间戳
+	LAST(field_key),tag_key(s),field_key(s)
+MAX()
+	MAX(field_key),tag_key(s),field_key(s)
+MIN()
+	MIN(field_key),tag_key(s),field_key(s)
+PERCENTILE()
+	Returns the Nth percentile field value.
+	返回第N个百分位数字段值。
+	PERCENTILE(field_key,N),tag_key(s),field_key(s)
+		仅针对数值字段
+		返回与括号中的字段关键字以及相关标签和/或字段关联的第N个百分位数字段值。
+	PERCENTILE(field_key,N)
+		返回与字段键关联的第N个百分位数字段值
+	//SELECT PERCENTILE("water_level",90) FROM "h2o_feet"
+	//	返回需要大于water_level的前百分之90的字段值的值
+		name: h2o_feet
+		time                 percentile
+		----                 ----------
+		2019-09-13T19:36:00Z 7.969		// 比如我们只要大于7.969, 我们就可以大于90%的数值
+	PERCENTILE(<field_key>,100) is equivalent to MAX(<field_key>).
+	PERCENTILE(<field_key>, 50) is nearly equivalent to MEDIAN(<field_key>),
+
+SAMPLE()
+	返回N个字段值的随机样本。
+	SAMPLE（）使用储层采样来生成随机点
+	SAMPLE(field_key,N)
+	SAMPLE(field_key,N),tag_key(s),field_key(s)
