@@ -14,6 +14,10 @@
 7. Kubelet将通过设置宽限期0（立即删除）来完成在API服务器上删除Pod的操作。该Pod从API中消失，并且在客户端中不再可见
 
 kubectl delete --grace-period=<seconds> 来调整默认期限
+  设置为0将会立即从api server中删除pod
+  如果任然存在在节点上，则会触发kubelet强制删除, 不过不许带上--force 选项才能强制删除
+  执行force删除之后，apiserver 不会确认kubelet真的删除完毕，而是直接认定已经删除完毕，这样可以立即创建相同名称的Pod
+  
 
 [pod labels]
 --show-labels 
@@ -53,3 +57,150 @@ spec:
         cpu: "500m"
     500m --> 0.5个cpu， 在云环境中相当于0.5个vcpu，超线程环境（几核几线程），相当于0.5个线程
     
+
+[Pod]
+
+pod phase（阶段）:
+  PodStatus 结构体
+  Pending:
+    The pod has been accepted by the kubernetes cluster, but onr or more of the containers has not been setup and made ready to run.
+    This includes time a Pod spends waiting to be scheduled as well as the time spent downloading container images over the network
+    Pod被k8s集群接受，但是其中的一个或多个容器并没有启动，这些时间包括了pod被调度的时间，下载镜像的时间
+  Running:
+    Pod已绑定到一个节点，并且所有容器都已创建。至少一个容器仍在运行，或者正在启动或重新启动。
+  Succeded:
+    All containers in the pod have terminated in success, and will not be restarted.
+  Failed:
+    All containers in The Pod have terminated, and at lease one container has terminated in Failure.
+  Unknown:
+    由于某种原因，无法获得Pod的状态。此阶段通常是由于与Pod应该在其中运行的节点通信时发生错误而发生的。
+  
+container status:
+  Waiting:
+    pull image , apply Secret data,
+  Running:
+    成功运行，如果有postStart hook, 则已经成功完成
+  Terminated:
+    如果容器配置了preStop挂钩，则该挂钩在容器进入“已终止”状态之前运行。
+
+container restartPolicy
+  spec.restartPolicy
+  default value is Always
+
+Pod conditions:
+  Pod具有PodStatus，该PodStatus具有PodConditions数组，该Pod已通过或未通过
+  - PodScheduled:
+      the Pod has been scheduled to a node
+  - ContainersReady:
+      all containers in the Pod are ready
+  - Initialized:
+      all init containers have started successfully
+  - Ready:
+      Pod is able to serve requests and should be added to the load blancing pools of  all matching Services
+  
+
+Pod READINESS:
+
+
+
+Container probes:
+  由kubelet定期执行
+  ExecAction: 
+    执行指定的命令，判断推出代码是否为零
+  TCPSocketAction:
+    检查TCP端口是否打开
+  HTTPGetAction:
+    The diagnostic is considered successfully if the response has status
+    code greater than or equal to 200 and less than 400.
+  probe Result:
+    Success
+    Failure
+    Unknown
+
+kubelet can optionally perform and react to three kinds of probes on running containers.
+
+  livenessProbe:
+    Indicates whether the container is running. if the livenessProbe fails,
+    The kubelet kills the container, and the container is subjected to its restart policy
+    当我们的程序在pod中运行时不能够通过程序是否在运行判断存活状态， 我们需要进行一些判断，比如程序存活者，探测http状态码，状态码不是预期，
+    这个时候才需要存活探针
+    如果您希望您的容器在探测失败时被杀死并重新启动，请指定活动性探测，并指定Always或OnFailure的restartPolicy。
+    一般的程序会自动崩溃, 并且可以更具restartpolicy进行自动重启的，不太需要存活探针
+
+  readiessProbe:
+    Indicates whether the container is ready to respond to requests
+    如果就绪探针失败，则endpoint contaoller将从与Pod匹配的所有Service的endpoint中删除Pod的IP地址。
+    初始延迟之前的默认就绪状态为“failure”
+
+    如果您仅想在探测成功后才开始向Pod发送流量，请指定就绪探测器。
+
+  startupProbe:
+    指示是否启动容器内的应用程序。如果提供了启动探针，则将禁用所有其他探针，直到成功
+    如果启动探针失败了，kubelet将会杀死容器，容器将会应用自己的重启策略
+
+    启动探针对于具有需要很长时间才能投入使用的容器的Pod很有用。
+    如果您的容器通常在超过initialDelaySeconds + failureThreshold×periodSeconds的时间内启动，
+    则应指定一个启动探针，该探针检查与活动探针相同的终结点。
+
+    Probe Example
+
+      liveness:
+      ```
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: liveness-exec
+        labels:
+          test: liveness
+      spec:
+        containers:
+        - name: liveness
+          image: k8s.gcr.io/busybox
+          args:
+            - /bin/sh
+            - -c
+            - touch /tmp/healthy; sleep 30; rm -rf /tmp/healthy; sleep 3600
+          livenessProbe:
+            exec:
+              command:
+                - cat
+                - /tmp/healthy
+            initialDelaySeconds: 5
+            periodSeconds: 5
+        restartPolicy: "Never"
+      ```
+
+      startupProbe:
+      ```
+      startupProbe:
+      httpGet:
+        path: /healthz
+        port: liveness-port
+      failureThreshold: 30
+      periodSeconds: 10
+      ```
+      可以等待程序启动的最大时间为 30 * 10 = 300s
+
+
+      readinessProbe 探针
+      ```
+      readinessProbe:
+      exec:
+        command:
+        - cat
+        - /tmp/healthy
+      initialDelaySeconds: 5
+      periodSeconds: 5
+  ```
+
+  Configure Probe:
+    initialDelaySeconds: 
+      容器就绪之后，等待多少秒，readiness和liveness探针才开始活动
+    periodSeconds: 
+      探测间隔
+    timeoutSeconds：
+      探测超时的秒数。默认为1秒。最小也为1
+    successThreshold:
+      探针认为状态正确的尝试次数, 默认为1，最小为1
+    failureThreshold:
+      探针认为失败的尝试次数, 默认为3，最小为1

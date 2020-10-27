@@ -12,3 +12,25 @@ Understanding init containers:
 	do not support lifecycle, livenessProbe, readinessProbe, or startupProbe
 	多个init containers 顺序完成, 
 
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: init-container-test
+spec:
+  containers:
+    - name: webserv
+      image: qa-harbor.leihuo.netease.com/library/nginx:v2
+      ports:
+        - name: httpport
+          containerPort: 80
+  initContainers:
+    - name: init-1
+      image: busybox:1.28
+      command:
+        - sh
+        - -c
+        - until nslookup myservice.default.svc.cluster.local;do echo "hello,World" ; sleep 1; done
+```
+
+只有当 init-1 容器可以解析到 myservice.default.svc.cluster.local时， 应用程序容器webserv才会启动，init-1 会推出

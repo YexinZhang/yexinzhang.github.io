@@ -201,3 +201,23 @@ LOW; low-strength suites
 3DES; effective strength of 108 bits
 MD5; suites that use MD5
 EXP; obsolete export suites
+
+[sign签署带有扩展性息的ca 证书]
+
+openssl req -new -x509 -extensions v3_ca -key front-proxy-ca.key -out front-proxy-ca.crt -config openssl.conf
+(umask 077; openssl genrsa -out server.key 4096)
+``` openssl.conf
+[ req ]
+default_bits = 4096
+prompt = no
+default_md = sha256
+distinguished_name = dn
+
+[ dn ]
+CN = front-proxy-ca
+
+[ v3_ca ]
+subjectKeyIdentifier=hash
+basicConstraints=critical,CA:TRUE
+keyUsage=critical,keyEncipherment,digitalSignature,keyCertSign
+```
