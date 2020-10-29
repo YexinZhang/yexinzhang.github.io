@@ -49,7 +49,7 @@ SUM()
 
 
 
-SELECTORS
+[SELECTORS]
 
 BOTTOM()
 	返回最小的N个字段值。
@@ -100,3 +100,101 @@ SAMPLE()
 	SAMPLE（）使用储层采样来生成随机点
 	SAMPLE(field_key,N)
 	SAMPLE(field_key,N),tag_key(s),field_key(s)
+
+TOP()
+	返回最大的N个字段值
+	TOP(field_key,N)
+	TOP(field_key,tag_key(s),N)
+	TOP(field_key,N),tag_key(s),field_key(s)
+
+[Transformations]
+
+ABS()
+	返回字段的绝对值
+CUMULATIVE_SUM(	
+	返回后续字段值的运行总计。
+	The query returns the running total of the field values for each field key that stores numerical values
+	// 直会计算所有的数值类型的字段
+		SELECT "water_level" FROM "h2o_feet" WHERE time >= '2015-08-18T00:00:00Z' AND time <= '2015-08-18T00:30:00Z' AND "location" = 'santa_monica'
+
+		name: h2o_feet
+		time                   water_level
+		----                   -----------
+		2015-08-18T00:00:00Z   2.064
+		2015-08-18T00:06:00Z   2.116
+		2015-08-18T00:12:00Z   2.028
+		2015-08-18T00:18:00Z   2.126
+		2015-08-18T00:24:00Z   2.041
+		2015-08-18T00:30:00Z   2.051
+
+		SELECT CUMULATIVE_SUM("water_level") FROM "h2o_feet" WHERE time >= '2015-08-18T00:00:00Z' AND time <= '2015-08-18T00:30:00Z' AND "location" = 'santa_monica'
+
+		name: h2o_feet
+		time                   cumulative_sum
+		----                   --------------
+		2015-08-18T00:00:00Z   2.064
+		2015-08-18T00:06:00Z   4.18
+		2015-08-18T00:12:00Z   6.208
+		2015-08-18T00:18:00Z   8.334
+		2015-08-18T00:24:00Z   10.375
+		2015-08-18T00:30:00Z   12.426
+
+DERIVATIVE()
+	返回后续字段值之间的变化率。
+	相当于计算tan, y轴为两个点之间的时间跨度，单位为s，
+		SELECT "water_level" FROM "h2o_feet" WHERE "location" = 'santa_monica' AND time >= '2019-08-18T00:00:00Z' AND time <= '2019-08-18T00:30:00Z'
+		name: h2o_feet
+		time                 water_level
+		----                 -----------
+		2019-08-18T00:00:00Z 2.352
+		2019-08-18T00:06:00Z 2.379
+		2019-08-18T00:12:00Z 2.343
+		2019-08-18T00:18:00Z 2.329
+		2019-08-18T00:24:00Z 2.264
+		2019-08-18T00:30:00Z 2.267	
+
+		SELECT DERIVATIVE("water_level") FROM "h2o_feet" WHERE "location" = 'santa_monica' AND time >= '2019-08-18T00:00:00Z' AND time <= '2019-08-18T00:30:00Z'
+		name: h2o_feet
+		time                 derivative
+		----                 ----------
+		2019-08-18T00:06:00Z 0.00007500000000000037  //此处的值是通过 (2.379-2.352)/(360s/1s)  时间间隔为360s
+		2019-08-18T00:12:00Z -0.00010000000000000009
+		2019-08-18T00:18:00Z -0.00003888888888888831
+		2019-08-18T00:24:00Z -0.00018055555555555663
+		2019-08-18T00:30:00Z 0.000008333333333333649
+
+		当然也可以指定时间间隔的单位 
+			DERIVATIVE("FIELD", 6m)... --> ( 2.116 - 2.064 )/(6m/6m)
+			DERIVATIVE("FIELD", 1m)... --> ( 2.116 - 2.064 )/(6m/1m)
+	advanced syntax
+		高级用法
+		DERIVATIVE(mean("fiield"),#) 先计算mean, 在套用derivative(#.#)
+
+
+DIFFERENCE()
+	返回后续字段值之间相减的结果。
+ELAPSED()
+	时间戳之间的差值
+EXP()
+	返回指数
+
+MOVING_AVERAGE()
+	滚动计算相邻N个字段的平均值
+	MOVING_AVERAGE(field_key,N)
+	
+	SELECT moving_average("water_level",2) FROM "h2o_feet" WHERE "location" = 'santa_monica' AND time >= '2019-08-18T00:00:00Z' AND time <= '2019-08-18T00:30:0
+	0Z'
+	name: h2o_feet
+	time                 moving_average
+	----                 --------------
+	2019-08-18T00:06:00Z 2.3655    (2.352+2.379)/2
+	2019-08-18T00:12:00Z 2.3609999999999998 (2.379+2.343)/2 ...
+	2019-08-18T00:18:00Z 2.336
+	2019-08-18T00:24:00Z 2.2965
+	2019-08-18T00:30:00Z 2.2655
+
+NON_NEGATIVE_DERIVATIVE()
+	返回后续字段值之间的非负变化率。非负变化率包括正变化率和等于零的变化率。
+
+ROUND()
+	返回舍入到最接近整数的后续值
