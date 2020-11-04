@@ -81,3 +81,8 @@ node-4 将会被分到25个
 
 topoSpreadConstraints 可以出现多个， 他们之间是“与”的关系
 ```
+约定:
+  - 只有与传入Pod具有相同名称空间的Pod才可以匹配候选。
+  - 没有topologyKey存在的节点将会被绕过
+  - topologySpreadConstraints[*].labelSelector 一般要与workerload自己的标签相互匹配
+  - 如果传入的Pod定义了spec.nodeSelector或spec.affinity.nodeAffinity，则不匹配它们的节点将被绕过。

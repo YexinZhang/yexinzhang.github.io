@@ -1,4 +1,5 @@
----
+### Service
+- In Kubernetes, a Service is an abstraction which defines a logical set of Pods and a policy by which to access them
 
 ServiceType:
     default --> ClusterIP
