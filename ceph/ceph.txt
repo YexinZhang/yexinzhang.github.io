@@ -1,0 +1,191 @@
+Cluster Map
+
+Monitor Map:
+	Contains cluster fsid, position, name address and port of each monitor. 
+	ceph mon dump
+OSD Map:
+	cluster fsid,  a list of pools, replica size, PG numbers, a list of OSDs and their status. 
+	ceph osd dump
+PG Map:
+	PG Version, 包含PG版本，其时间戳，最后一个OSD映射历元，完整比例以及每个放置组的详细信息，例如PG ID，Up Set，Acting Set，PG的状态（例如，活动+清除），以及每个池的数据使用情况统计信息。
+CRUSH Map:
+	包含存储设备列表，故障域层次结构（例如，设备，主机，机架，行，房间等），以及在存储数据时遍历层次结构的规则。 
+	ceph osd getcrushmap -o ${filename}
+	curshtool -d {$filename} -o ${human_readable_file}
+MDS Map:
+	contains the current mds map epoch. 
+	ceph fs dump
+	
+	Each map maintains an iterative(反复的) history of its operating state changes.
+	Ceph Monitor maintain a master copy of the cluster map including the cluster members, state, changes, and the overall health of the 
+ceph storage cluster.
+
+
+在ceph客户端可以读写数据之前， 他们必须先联系monitor去获得最近的一次cluster map.
+
+
+About pools
+logical partitions for storing objects.
+
+
+Storage Device
+	bluestore:
+		Direct management of storage devices.
+			bluestore 消耗裸硬盘以及磁盘分区，避免介入文件系统(如 xfs, ext4), 降低了复杂性，提升了性能
+		Metadata management with RocksDB. 
+			保存例如从对象名称到磁盘上块位置的映射
+		Full data and metadata checksumming.
+			默认，所有的数据和元数据写入bulestore都会有一个或者多个校验和，未经验证，不会从磁盘读取任何数据或元数据或将其返回给用户。
+		Inline compression.(内联压缩)
+			写入的数据在写入磁盘之前可以选择压缩。
+		多设备源数据分层.
+			bulestore 允许内部的预写式日志写入到快速的NVMe，SSD设备从而提升性能。如果有大量的快速存储可用，内部元数据也可以存储在更快的设备上。
+		高效的写时复制.
+			RDB and CephFS snapshots rely on a copy-on-write clone mechannism that is implemented efficiently in BuleStore.
+
+[osd config]
+(Generally settings)
+osd journal size = 5120
+osd uuid 
+osd data // /var/lib/ceph/osd/$cluster-$id
+osd max object size // 128MB 32 bit-integer
+osd client message size cap // 内存中允许的最大客户端数据消息。
+
+(filesystem settings)
+Ceph建立并挂载用于Ceph OSD的文件系统。
+osd mkfs options {fs-type} // osd mkfs options xfs = -f -d agcount=24
+osd mount options {fs-type}  // osd mount options xfs = rw, noatime, inode64, logbufs=8
+
+(journal settings)
+将快速（SSD，NVMe）设备与速度较慢的设备（例如旋转驱动器）混合使用时，将日志放置在速度更快的设备上是有意义的，而数据则完全占用速度较慢的设备。
+缺省的osd日志大小值为5120（5 GB），但可以更大，在这种情况下，需要在ceph.conf文件中进行设置：
+osd journal size =  10240 // MB 
+osd journal  = /var/lib/ceph/osd/$cluster-$id/journal // 
+这可能是文件或块设备（例如SSD的分区）的路径。如果是文件，则必须创建目录来包含它。我们建议使用与osd数据驱动器分开的驱动器。
+
+
+
+
+
+BlueStore Setting
+A single-device BlueStore OSD can be provisioned with:
+ceph-volume lvm prepare --bluestore --data <device>
+
+To specify a WAL device and/or DB device,
+ceph-volume lvm prepare --bluestore --data <device> --block.wal <wal-device> --block.db <db-device>
+
+混合设备配置block.db 和 data
+data:
+	vgcreate ceph-block-0 /dev/sda
+	lvcreate -l 100%FREE -n block-0 ceph-block-0
+block.db:
+	vgcreate ceph-db-0 /dev/sdx(固态盘)
+	lvcreate -L 50GB -n db-0 ceph-db-0
+Create OSDs
+	ceph-volume lvm create --bulestore --data ceph-block-0/block-0 --block.db ceph-db-0/db-0
+
+BlueStore checksums all metadata and data written to disk.
+校验和配置选项
+bluestore_csum_type
+动态更改
+ceph osd pool set <pool-name> csum_type <algorithm> // none, crc32c, crc32c_16, crc32c_8, xxhash32, xxhash64
+
+压缩：
+bluestore compression algorithm // lz4, snappy, zlib, zstd zstd不太推荐用于bluestore
+bluestore compression mode // none, passive(客户端说可以压缩，才能够进行压缩), aggressive, force 
+
+
+
+[pg]
+
+pg_autoscale_mode 自动扩展pg, // <node> = off,on,warn
+	warn: 当应调整pg数量时，发出警告
+	ceph osd pool set <pool-name> pg_autoscale_mode <mode>
+	ceph osd autoscale-status
+将pool关联到应用程序
+	ceph osd pool application enable poolname app_name
+rename a pool
+	ceph osd pool rename {current-pool-name} {new-pool-name}
+SHOW POOL STATISTICS
+	rados df 
+	ceph osd pool stats [{pool-name}]
+Make a snapshot
+	ceph osd pool mksnap {pool-name} {snap-name}
+REMOVE A SNAPSHOT OF A POOL
+	ceph osd pool rmsnap {pool-name} {snap-name}
+删除pool
+	ceph osd pool delete data data --yes-i-really-really-mean-it
+	[mon]
+	mon allow pool delete = true // 需要在配置文件中配置此值， 并且重启所有的ceph-mon.target
+
+设置pool的值
+	ceph osd pool set {pool-name} {key} {value}
+	:
+		compression_algorithm  //lz4, snappy, zlib, zstd
+		compression_mode // none, passive, aggressive, force(同上)
+		size // 池中对象的副本数
+		pg_num
+		pgp_num
+		crush_rule //用于在集群中映射对象放置的规则。
+查看pool的配置
+	ceph osd pool get pool-name key
+	ceph osd pool get rbd size
+
+
+
+
+create pool
+ceph osd pool create {pool-name} [{pg-num} {pgp-num}] [replicated] [cursh-rule-name] [expected-num-objects]
+ceph osd pool create {pool-name} [{pg-num} {pgp-num}] erasure [erasure-code-profile] [crush-rule-name] [expected_num_objects] [--autoscale-mode=<on,off,warn>]
+
+
+
+
+[rbd]
+1. 创建pool，开启application
+2. 初始化rbd
+	rbd pool init POOL_NAME
+
+在使用block device之前， 必须创建image
+
+	rbd create --size {MB} {pool}/{image-name}
+	rbd create --size 1024 swimmingpool/bar
+
+ops命令
+	rbd ls
+	rbd ls {pool-name}
+	显示延时删除的image
+	rbd trash ls {poolname}
+
+	拿信息
+	rbd info {image-name}
+		rbd image 'disk01':
+		        size 8 GiB in 2048 objects
+		        order 22 (4 MiB objects)
+		        snapshot_count: 0
+		        id: ad569c595324
+		        block_name_prefix: rbd_data.ad569c595324   // 此处的id 会在rbd trash restore 中使用
+		        format: 2
+		        features: layering, exclusive-lock, object-map, fast-diff, deep-flatten
+		        op_features:
+		        flags:
+		        create_timestamp: Mon Nov 16 16:02:48 2020
+		        access_timestamp: Mon Nov 16 16:02:48 2020
+		        modify_timestamp: Mon Nov 16 16:02:48 2020
+	rbd info {pool}/{image-name}
+	
+	改大小
+	Ceph块设备映像是精简配置的。在您开始将数据存储到它们之前，它们实际上并没有使用任何物理存储。
+	但是，它们确实具有您使用--size选项设置的最大容量。如果要增加（或减少）Ceph块设备映像的最大大小，请执行以下操作
+	rbd resize --size {MB} rbd/disk01 [--allow-shrink(减小)]
+
+	删除
+	rbd rm rbd/disk01
+
+	延时删除
+	rbd trash mv rbd/disk01 这一步还没有删除， 但是已经无法查看
+	rbd trash rm rbd/disk01 删除
+	重载
+		rbd trash restore {image-id}
+		rbd trash restore rbd/{image-id} --image new-image-name // 载入时重新命名
+		
