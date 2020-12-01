@@ -1,0 +1,6 @@
+auth strategies
+
+client certificates
+bearer tokens
+authenticating proxy
+HTTP basic auth

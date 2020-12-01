@@ -1,0 +1,75 @@
+[NodeSelector]
+
+You can constrain（束缚） a Pod to only be able to run on particular Nodes, or to prefer to run on particuler nodes.
+
+1. label
+    kubectl label nodes NODENAME dicktype="ssd"
+2. write in podSpec
+    spec:
+      nodeSelector:
+      disktype: ssd
+
+[affinity]
+affinity 尽在安排pod时起效果
+node affinity: // based on label
+    requiredDuringSchedulingIgnoredDuringExecution
+    preferredDuringSchedulingIgnoredDuringExecution
+
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:   
+        - matchExpressions:
+        //可以指定多个， 满足一个即可, 但必须是不通的key, 比如zone=hz, wide=north,
+                             满足这两个其中之一的都可以被调度
+          - key: kubernetes.io/e2e-az-name
+            operator: In
+            values:
+            - e2e-worth
+            - e2e-north
+      preferredDuringSchedulingIgnoredDuringExecution: // 如果匹配到matchExpressions,Node将具有更优先的选择权，
+        - weight: 1
+            preference:
+            matchExpressions:
+            - key: another-node-label-key
+                operator: In
+                values:
+                - another-node-label-value
+该节点关联性规则表示，只能将Pod放置在标签为kubernetes.io/e2e-az-name且标签值为e2e-az1或e2e-az2的节点上。
+另外，在满足该标准的节点中，应首选具有标签的键为“ another-node-label-key”且值为“ another-node-label-value”的节点。
+
+operator:
+    In
+    NotIn 
+    Exists
+    DoesNotExist
+    Gt 
+    Lt
+
+nodeSelector 和nodeAffinity 同时配置需要同时满足
+
+
+[InterPod Affinity]
+  affinity:
+    podAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: security
+            operator: In
+            values:
+            - S1
+        topologyKey: topology.kubernetes.io/zone
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: security
+              operator: In
+              values:
+              - S2
+          topologyKey: topology.kubernetes.io/zone
+pod 将被调度到同一topo区域, 并且此区域内已经有label为security=S1的pod 的node上面
