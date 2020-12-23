@@ -1,0 +1,92 @@
+配置文件指令
+
+source
+    确定输入
+match
+    确定输出
+filter
+    确定事件处理管道
+system
+    全系统配置
+label
+    指令将输出和过滤器分组以进行内部路由
+@include
+    包含其他配置文件
+
+
+<parse> under <source>, <match>, <filter>
+
+
+input plugin:
+
+[in_tail]
+
+@type  
+    tail
+tag
+    {type string}
+    path /path/to/file
+    tag foo.*
+    tag --> foo.path.to.file
+path
+    path /path/to/a/*,/path/to/b/c.log
+exclude_path
+    排除哪些路劲
+    exclude_path ["/path/to/*.gz", "/path/to/*.zip"]
+refresh_interval
+    {time} default 60s
+    当在路径中使用'*'号时，多久扫描一次路径下面的文件，用来发现新文件
+limit_recently_modified {time}
+    在路径中使用*时，限制监视文件的修改时间在指定的时间范围内。
+read_from_head
+    {bool}
+    开始从文件的开头而不是尾部读取日志。
+    如果要使用*或strftime(/path/to/%Y/%m/%d/)动态路径结尾内容，
+    请将此参数设置为true。
+    相反，您应该保证日志轮换不会在*目录中发生。
+encoding, from_encoding {string}
+    Specifies the encoding of reading lines.
+    默认情况下，in_tail发出字符串值作为ASCII-8BIT编码。
+read_lines_limit
+    default 1000
+pos_file(强烈建议)
+    Fluentd将记录该文件最后一次读取的位置：
+    pos_file /var/log/td-agent/tmp/access.log.pos
+pos_file_compaction_interval {time}
+    压缩pos文件的间隔。
+    pos_file_compaction_interval 72h
+<parse> Directive (required)
+    in_tail使用解析器插件来解析日志
+    # json
+    <parse>
+    @type json
+    </parse>
+
+    # regexp
+    <parse>
+    @type regexp
+    expression ^(?<name>[^ ]*) (?<user>[^ ]*) (?<age>\d*)$
+    </parse>
+path_key
+    将监视文件路径添加到path_key字段。
+    path /path/to/access.log
+    path_key tailed_path
+    生成的events就像下面这样
+    {"tailed_path":"/path/to/access.log","k1":"v1",...,"kN":"vN"}
+rotate_wait
+    {time} 5s
+    旋转文件时，可能仍然需要将一些数据写入旧文件，而不是新文件。
+    in_tail通过在完全转换为新文件之前保留对旧文件的引用（即使在旋转之后）来解决此问题。
+    这有助于防止为旧文件指定的数据丢失。默认情况下，此时间间隔为5秒。
+    rotation_wait参数接受一个单个整数，该整数表示您希望此时间间隔为的秒数。
+    个人理解： 文件轮转时，保持追踪旧文件5秒
+enable_watch_timer
+    启用附加的监视计时器。当在支持inotify的系统上tail大量文件时，
+    将此参数设置为false将大大减少CPU和I / O消耗。默认值为true，这将导致使用额外的1秒计时器。
+emit_unmatched_lines
+    当<parse>格式与传入日志不匹配时，发出不匹配的行。
+    Emitted record is {"unmatched_line" : incoming line}, e.g. {"unmatched_line" : "Non JSON format!"}.
+@log_level
+   @log_level选项允许用户为每个插件设置不同级别的日志记录。支持的日志级别为：fatal, error, warn, info, debug, and trace.
+
+ 
