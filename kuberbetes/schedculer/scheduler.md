@@ -69,3 +69,7 @@ NoExecute: 不仅不会调度，还会驱逐Node上已有的Pod。
 ```
 
 You can put multiple taints on the same node and multiple tolerations on the same pod.
+
+node上面有几个污点， pod在定义的时候就需要定义几个容忍度
+
+通常，如果将具有NoExecute效果的误点添加到节点，则不容忍该污点的任何Pod都将立即被驱逐，而容忍该污点的Pod将永远不会被驱逐。
