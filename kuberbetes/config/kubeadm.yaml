@@ -1,0 +1,77 @@
+apiVersion: kubeadm.k8s.io/v1beta2
+bootstrapTokens:
+- groups:
+  - system:bootstrappers:kubeadm:default-node-token
+  token: abcdef.0123456789abcdef
+  ttl: 24h0m0s
+  usages:
+  - signing
+  - authentication
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: 10.246.194.191
+  bindPort: 7443
+nodeRegistration:
+  criSocket: /var/run/dockershim.sock
+  name: white
+  taints:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+---
+apiServer:
+  certSANs:
+  - "white"
+  - "black"
+  - "pink"
+  - "10.246.194.191"
+  - "10.246.195.178"
+  - "10.246.195.110"
+  timeoutForControlPlane: 4m0s
+  extraArgs:
+    audit-log-maxage: "3"
+    audit-log-maxbackup: "3"
+    audit-log-maxsize: "64"
+    audit-log-mode: batch
+    audit-log-path: /var/log/audit.log
+    audit-policy-file: /etc/kubernetes/audit-policy.yaml
+    authorization-mode: Node,RBAC
+  extraVolumes:
+  - hostPath: /etc/kubernetes/audit-policy.yaml
+    mountPath: /etc/kubernetes/audit-policy.yaml
+    name: audit
+    pathType: File
+    readOnly: true
+  - hostPath: /var/log/audit.log
+    mountPath: /var/log/audit.log
+    name: audit-log
+    pathType: FileOrCreate
+apiVersion: kubeadm.k8s.io/v1beta2
+certificatesDir: /etc/kubernetes/pki
+clusterName: kubernetes
+controllerManager: {}
+dns:
+  type: CoreDNS
+etcd:
+  external:
+    endpoints:
+      - https://10.246.198.136:2379
+      - https://10.246.197.42:2379
+      - https://10.246.194.51:2379
+    caFile: /etc/kubernetes/pki/etcd/ca.crt
+    certFile: /etc/kubernetes/pki/apiserver-etcd-client.crt
+    keyFile: /etc/kubernetes/pki/apiserver-etcd-client.key
+imageRepository: k8s.gcr.io
+kind: ClusterConfiguration
+kubernetesVersion: v1.19.4
+networking:
+  dnsDomain: cluster.local
+  serviceSubnet: 10.96.0.0/12
+  podSubnet: "192.168.0.0/16"
+scheduler: {}
+controlPlaneEndpoint: 10.246.195.110:6443
+---
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+featureGates:                #
+  SupportIPVSProxyMode: true # 1.20.0好像不需要这两行
+mode: ipvs
