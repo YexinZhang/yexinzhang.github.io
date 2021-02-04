@@ -1,4 +1,12 @@
+### Glossary
+
+```
+record influxdb里面插入的每一行记录
+```
+
+
 ### Query Result
+
 
 ``` go
 type QueryTableResult struct {
@@ -47,6 +55,7 @@ import "influxdata/influxdb/schema"
 schema.fieldKeys(bucket: "example-bucket")
 
 # List fields in a measurement
+import "influxdata/influxdb/schema"
 schema.measurementFieldKeys(
   bucket: "telegraf",
   measurement: "cpu"
@@ -58,6 +67,7 @@ schema.tagKeys(bucket: "example-bucket")
 
 # List tag keys in a measurement
 # 列出在measurement中的tag
+import "influxdata/influxdb/schema"
 schema.measurementTagKeys(
   bucket: "example-bucket",
   measurement: "example-measurement"
@@ -85,10 +95,14 @@ schema.measurementTagValues(
 
 ### example
 ```cpp
+time format 2019-09-01T00:00:00Z
+|> range(start: 2019-09-01T00:00:00Z, stop: 2019-09-01T00:10:00Z)
+|> range(start: -$DURATION)
+
 网卡每秒接受发送的字节数
-from(bucket: "qa")
+from(bucket: "${buckets}")
 |> range(start: -${simple})
-|> filter(fn: (r) => r._measurement == "net" and r.host == "${host}")
+|> filter(fn: (r) => r._measurement == "net" and r.host == "${machine}")
 |> filter(fn: (r) =>
   r._field == "bytes_recv" or r._field == "bytes_sent"
 )
@@ -132,7 +146,7 @@ multiply = (x, y) => x * y
 
 #### 管道函数
 ``` cpp
-管道函数
+// 管道函数
 In the example below, the tables parameter is assigned to the <- expression, which represents all data piped-forward into the function. tables is then piped-forward into other operations in the function definition.
 在下面的示例中，将表参数分配给<-表达式，该表达式表示所有通过管道传递到函数中的数据。 然后将表通过管道传递到函数定义中的其他操作中。
 
@@ -140,7 +154,7 @@ functionName = (tables=<-) => tables |> functionOperations
 
 // define
 下面的示例定义了一个multByX函数，该函数将输入表中每行的_value列乘以x参数。 它使用map（）函数修改每个_value。
-// Function definition // tables 只是一个参数名, 可以替换成任意的字符串
+// Function definition // tables 只是一个参数名, 可以替换成任意的字符串, tables在调用时不用显示指出
 multByX = (tables=<-, x) => tables |> map(fn: (r) => ({ r with _value: r._value * x}))
 // func usage
 // Function usage
@@ -153,9 +167,91 @@ from(bucket: "example-bucket")
   |> multByX(x:2.0)
 ```
 
-####函数的默认值
+#### reduce函数
+```cpp
+函数的定义和管道函数基本类似
+functionName = (para,tables) => tables |> reduce(
+  identity: {KEY: VALUE, KEY: VALUE...}, //这个identity是自定义的参数，可以供accumulator调用
+  fn: (tables, accumulator) => ({
+    // 操作 
+  })
+)
+
+// 函数定义的example:
+average = (tabels=<-, outputField="average") => 
+  tabels 
+    |> reduce(
+      identity: {
+        count: 1.0,
+        sum: 0.0,
+        avg: 0.0
+      },
+      fn: (r, accumulator) => ({
+        count: accumulator.count + 1.0,  // 统计record的行数, 每输入一个增加1
+        // accumulator.count 的初始值为identity中定义的值， 
+        // 计算完成之后结果会存入count中，供下一个record计算调用
+        sum: r._value + accumulator.sum, // 计算累加， 每次用r._value和sum相加，并且保留sum
+        avg: accumulator.sum / accumulator.count // 通过sum和count的值计算_value的平均数
+      }) 
+    )
+    |> drop(columns: ["count","sum"])
+    |> set(key: "_field", value: outputField)
+    |> rename(columns: {avg: "_value"})
+
+// 调用example:
+from(bucket: "telegraf")
+  |> range(start: -10m)
+  |> filter(fn: (r) => r._measurement == "mem" and r._field == "used_percent" and r.host == "white")
+  |> average()
+```
+
+#### 函数的默认值
 Use the = assignment operator to assign a default value to function parameters in your function definition:
 ```cpp
 functionName = (param1=defaultValue1, param2=defaultValue2) => functionOperation
 
+```
+
+### stateDuration计算某一个值连续保持了多久
+```cpp
+
+// 计算_value为high的值持续了多久，按秒计
+from(bucket: "telegraf")
+  |> range(start: -10m)
+  |> filter(fn: (r) => r._measurement == "mem" and r._field == "used_percent" and r.host == "white")
+  |> map(fn: (r) => ({
+    r with 
+    level: 
+      if r._value > 17.99 then "high"
+      else "low"
+  }))
+  |> stateDuration(
+    fn: (r) =>
+    r.level == "high", 
+    unit: 1s)
+  |> map(fn: (r) => ({
+    r with
+    _value: r.stateDuration
+  }))
+```
+
+### stateCount() 计算连续状态的数量
+```cpp
+from(bucket: "telegraf")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r._measurement == "mem" and r._field == "used_percent" and r.host == "white")
+  |> map(fn: (r) => ({
+    r with 
+    level: 
+      if r._value > 17.99 then "high"
+      else "low"
+  }))
+  |> stateCount(
+    fn: (r) => r.level == "high",
+  )
+  |> map(fn: (r) => ({
+    r with 
+    _value: r.stateCount  
+  })
+  )
 ```
