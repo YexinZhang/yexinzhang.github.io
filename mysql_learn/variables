@@ -11,3 +11,5 @@
 mysql.user的account_locked可以锁定用户登录
 UPDATE  mysql.user SET account_locked='N' WHERE User='admin';
 
+SET PERSIST VARIABLE_NAME='XXX';
+可以在运行时将变量设为永久存在

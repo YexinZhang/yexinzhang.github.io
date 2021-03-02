@@ -1,0 +1,24 @@
+TIMESTAMPDIFF(unit, datetime_expr1, datetime_expr2)
+    mysql> SELECT TIMESTAMPDIFF(YEAR,'2000-01-01','2021-02-25') AS 'Year';
+    +------+
+    | Year |
+    +------+
+    |   21 |
+    +------+
+    unit 指定两个时间点之间的间隔单位, YEAR就是间隔多少年
+        YEAR
+        MONTH
+        MINUTE
+
+YEAR()
+MONTH()
+DAYOFMONTH()
+
+    select DAYOFMONTH('2020-01-03')
+    +--------------------------+
+    | dayofmonth('2020-07-03') |
+    +--------------------------+
+    |                        3 |
+    +--------------------------+
+
+
