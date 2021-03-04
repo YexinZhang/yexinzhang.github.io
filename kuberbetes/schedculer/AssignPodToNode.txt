@@ -21,7 +21,7 @@ spec:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:   
         - matchExpressions:
-        //可以指定多个， 满足一个即可, 但必须是不通的key, 比如zone=hz, wide=north,
+        //可以指定多个， 满足一个即可, 但必须是不同的key, 比如zone=hz, wide=north,
                              满足这两个其中之一的都可以被调度
           - key: kubernetes.io/e2e-az-name
             operator: In
@@ -30,12 +30,12 @@ spec:
             - e2e-north
       preferredDuringSchedulingIgnoredDuringExecution: // 如果匹配到matchExpressions,Node将具有更优先的选择权，
         - weight: 1
-            preference:
-            matchExpressions:
-            - key: another-node-label-key
-                operator: In
-                values:
-                - another-node-label-value
+          preference:
+          matchExpressions:
+          - key: another-node-label-key
+              operator: In
+              values:
+              - another-node-label-value
 该节点关联性规则表示，只能将Pod放置在标签为kubernetes.io/e2e-az-name且标签值为e2e-az1或e2e-az2的节点上。
 另外，在满足该标准的节点中，应首选具有标签的键为“ another-node-label-key”且值为“ another-node-label-value”的节点。
 
