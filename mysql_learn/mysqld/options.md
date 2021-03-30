@@ -231,3 +231,74 @@ The server shuts down or closes storage engines.
 每个存储引擎都对其管理的表执行必要的任何操作。 InnoDB将其缓冲池刷新到磁盘（除非innodb_fast_shutdown为2），将当前LSN写入表空间，并终止其自己的内部线程。 MyISAM刷新表的所有挂起的索引写入。
 The server exits.
 ```
+
+
+[logs]
+log_output=FILE[,TABLE] general_log and slow_log 存储位置 | runtime
+general_log=1|0
+slow_query_log=1|0
+general_log_file=path
+slow_query_log_file=path
+
+```sql
+--- 更改日志表的存储引擎
+SET @old_log_state = @@GLOBAL.general_log;
+SET GLOBAL general_log = 'OFF';
+ALTER TABLE mysql.general_log ENGINE = MyISAM;
+SET GLOBAL general_log = @old_log_state;
+```
+
+
+[error_log]
+
+    总的来说就是有一个日志过滤器来通过权重或者用户定义的内容抓取mysql产生的错误日志，然后通过一个或者多个sink（下沉）将日志输出到stderr或者文件中
+
+    SELECT @@GLOBAL.log_error_services; // 选择日志过滤和输出的流程
+
+    ```log_error_services```: controls which log components to enable for error logging.
+    log_error_services系统变量控制要启用错误日志记录的日志组件。该变量可以包含具有0、1或许多元素的列表。
+    在后一种情况下，元素可以用分号或（从MySQL 8.0.12开始）逗号分隔，并可选地后跟空格。
+    给定的设置不能同时使用分号和逗号分隔符。
+    组件顺序很重要，因为服务器按照列出的顺序执行组件。
+
+The combination of log_filter_internal and log_sink_internal implements the default error log filtering and output behavior.
+可以变化 error_log的输出形式
+```sql
+INSTALL COMPONENT 'file://component_log_sink_json';
+--- log_sink_syseventlog
+--- log_sink_json
+SET PERSIST log_error_services = 'log_filter_internal; log_sink_json';
+```
+
+错误日志过滤
+``` sql
+--- log_filter_dragnet
+--- log_filter_internal # default
+/*
+    internal 通过Piority来过滤日志
+    https://dev.mysql.com/doc/refman/8.0/en/error-log-priority-based-filtering.html
+    dragent 通过用户定义规则
+    https://dev.mysql.com/doc/refman/8.0/en/error-log-rule-based-filtering.html
+*/
+
+INSTALL COMPONENT 'file://component_log_filter_dragnet';
+
+```
+刷新错误日志
+```yaml
+mv host_name.err host_name.err-old
+mysqladmin flush-logs
+mv host_name.err-old backup-directory
+```
+
+
+[plugin]
+ find / -name component*
+/usr/lib/mysql/plugin/component_reference_cache.so
+/usr/lib/mysql/plugin/component_log_filter_dragnet.so
+/usr/lib/mysql/plugin/component_log_sink_syseventlog.so
+/usr/lib/mysql/plugin/component_mysqlbackup.so
+/usr/lib/mysql/plugin/component_query_attributes.so
+/usr/lib/mysql/plugin/component_audit_api_message_emit.so
+/usr/lib/mysql/plugin/component_validate_password.so
+/usr/lib/mysql/plugin/component_log_sink_json.so
