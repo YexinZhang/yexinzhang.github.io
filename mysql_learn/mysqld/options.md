@@ -231,3 +231,11 @@ The server shuts down or closes storage engines.
 每个存储引擎都对其管理的表执行必要的任何操作。 InnoDB将其缓冲池刷新到磁盘（除非innodb_fast_shutdown为2），将当前LSN写入表空间，并终止其自己的内部线程。 MyISAM刷新表的所有挂起的索引写入。
 The server exits.
 ```
+
+
+[binlog_encryption]
+二进制日志加密
+加密自后mysqlbinlog不能直接读取，
+
+
+[]
