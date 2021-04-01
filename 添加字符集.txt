@@ -1,0 +1,10 @@
+一般添加字符集需要用到locales
+
+apt update && apt install locales
+安装之后， 会生成/etc/locale.gen
+
+echo 'zh_CN.UTF-8 UTF-8' >> /etc/locale.gen 
+
+locale-gen zh_CN.UTF-8
+
+这个时候locale -a就会出现我们想要的字符集, 这样就是把想要的字符集安装在了系统上
