@@ -31,3 +31,7 @@ show status like '%binlog_cache%';
 日志无法记录时的操作
 IGNORE_ERROR 如果服务器遇到此类错误，它将继续进行中的事务，记录该错误然后停止记录，并继续执行更新。
 ABORT_SERVER 关闭日志记录，并且关闭mysql-server
+
+[binlog_row_event_max_size]
+将二进制日志中存储的行分组为大小不超过此设置值的事件
+如果事件无法拆分，则可以超过最大大小。
