@@ -32,7 +32,21 @@ show status like '%binlog_cache%';
 IGNORE_ERROR 如果服务器遇到此类错误，它将继续进行中的事务，记录该错误然后停止记录，并继续执行更新。
 ABORT_SERVER 关闭日志记录，并且关闭mysql-server
 
-<<<<<<< HEAD
+[binlog_row_event_max_size]
+将二进制日志中存储的行分组为大小不超过此设置值的事件
+如果事件无法拆分，则可以超过最大大小。
+选项适用于能够进行基于行的复制的服务器。行以块大小存储在二进制日志中，块大小不超过此选项的值（以字节为单位）。该值必须是256的倍数。默认值为8192。
+
+[MIXED格式]
+当以MIXED日志记录格式运行时，服务器在以下情况下自动从基于语句的记录切换为基于行的记录：
+When a function contains UUID().
+
+
+[sync_binlog]
+如何刷新binlog至磁盘
+1: 同步
+0|N: 异步
+
 [binlog_row_event_max_size]
 将二进制日志中存储的行分组为大小不超过此设置值的事件
 如果事件无法拆分，则可以超过最大大小。
@@ -41,7 +55,3 @@ ABORT_SERVER 关闭日志记录，并且关闭mysql-server
 [binlog_encryption]
 二进制日志加密
 加密自后mysqlbinlog不能直接读取，
-
-
-[]
->>>>>>> fa4c835d15198a2fa0bc98fbbcc1a016cf4d1f3b
