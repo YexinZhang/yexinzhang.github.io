@@ -233,6 +233,7 @@ The server exits.
 ```
 
 
+
 [logs]
 log_output=FILE[,TABLE] general_log and slow_log 存储位置 | runtime
 general_log=1|0

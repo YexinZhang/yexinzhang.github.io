@@ -7,10 +7,72 @@ Note:
     if donot set ,The master refuses ant connections from slaves.
 
     innodb_flush_log_at_trx_commit=1(设置为1 表示严格遵守ACID合规，不会导致丢失事务)
-    sync_binlog=1
+    sync_binlog=1(不推荐)
 
     锁表
     FLUSH TABLES WITH READ LOCK;
     UNLOCK TABLES;
 
     
+
+CHANGE REPLICATION SOURCE TO
+    -> SOURCE_HOST='game-db-50026-m',
+    -> SOURCE_USER='repl',
+    -> SOURCE_PASSWORD='redhat',
+    -> SOURCE_LOG_FILE='binlog.000004',    
+    -> SOURCE_LOG_POS=857,
+    -> GET_SOURCE_PUBLIC_KEY=1; //如果复制用户的密码插件为 caching_sha2_password， 需要向server请求公钥
+
+    For command-line clients, use the --server-public-key-path option to specify the RSA public key file.
+    Use the --get-server-public-key option to request the public key from the server. 
+
+    For Group Replication, the "group_replication_recovery_public_key_path" 
+    and "group_replication_recovery_get_public_key" system variables serve the same purpose.
+
+
+
+全局事务标识符（GTID）是创建的唯一标识符，并且与在原始服务器（源）上提交的每个事务相关联
+    GTID分配区分在于source上提交的客户端事务和在replicaset上重现的复制事务
+    如果将客户端事务提交到源上，则将为其分配一个新的GTID，前提是该事务已写入二进制日志中。
+    如果没有将客户事务写入二进制日志（例如，由于该事务已被滤除或该事务为只读），则不会在原始服务器上为其分配GTID。
+
+
+当一个GTID的事务在服务器上执行，但是还没有提交或者回滚的时候，其他的具有相同的GTID的并发事务都将会阻塞，
+如果事务提交，后面的相同GTID的并发事务都将会取消并阻塞，
+如果事务回滚，并发事务中的其中一个会被执行，其他的依然阻塞.
+
+@@GLOBAL.gtid_executed
+ In releases before MySQL 8.0.17 and with storage engines other than InnoDB, 
+ always use @@GLOBAL.gtid_executed, which is updated after every commit,
+
+
+GTID 生命周期
+1. 事务执行并且在source提交，为客户事务分配GTID，GTID将被写入源的二进制日志中，
+   如果没有将客户事务写入二进制日志（例如，由于该事务已被滤除或该事务为只读），则不会为其分配GTID。
+2. 每当rotate二进制日志或关闭服务器时，服务器都会将写入先前的二进制日志文件的所有事务的GTID写入mysql.gtid_executed表。
+3. 如果为事务分配了GTID，则将GTID添加到gtid_executed系统变量（@@ GLOBAL.gtid_exected）中的GTID集中，从而以非原子方式（在提交事务后不久）将GTID外部化。
+   启用二进制日志记录后（根据源的要求），gtid_exected系统变量中的GTID集是所应用事务的完整记录，但mysql.gtid_executed表却没有，因为最新的历史记录仍在当前二进制文件中日志文件。
+4. 将二进制日志数据传输到副本并存储在副本的中继日志中（使用此过程使用的已建立机制，副本将读取GTID并设置其gtid_next的值系统变量作为此GTID。
+   这告诉副本必须使用此GTID记录下一个事务。重要的是要注意，副本在会话上下文中设置了gtid_next。
+5. 如果多个客户端尝试同时应用同一事务，则服务器将通过仅允许其中一个执行来解决此问题。副本的gtid_owned系统变量（@@ GLOBAL.gtid_owned）显示当前正在使用的每个GTID以及拥有它的线程的ID。如果已经使用了GTID，则不会引发任何错误，并且使用自动跳过功能来忽略事务。
+6. 如果尚未使用GTID，则副本将应用复制的事务。因为gtid_next设置为源已经分配的GTID，所以副本不会尝试为此事务生成新的GTID，而是使用存储在gtid_next中的GTID。
+7. 副本开启二进制日志记录，轮转日志或者关闭服务时，也会将gtid写入表中
+8. 如果在副本数据库上禁用了二进制日志记录，则将GTID直接写入mysql.gtid_executed表，从而自动保留GTID。
+
+
+gtid复制
+gtid_mode=ON
+enforce-gtid-consistency=ON
+
+CHANGE REPLICATION SOURCE TO SOURCE_HOST = host, SOURCE_PORT = port, SOURCE_USER = user, SOURCE_PASSWORD = password,SOURCE_AUTO_POSITION = 1;
+
+gtid复制的限制
+（1）不支持非事务引擎（从库报错，stopslave; start slave; 忽略）
+（2）不支持create table … select 语句复制（主库直接报错，原因是该语句其实是一个DDL+DML）
+（3）不允许在一个SQL同时更新一个事务引擎和非事务引擎的表
+（4）在一个复制组中，必须要求统一开启GTID或是关闭GTID
+（5）开启GTID需要重启（5.7中可能不需要）
+（6）开启GTID后，就不在使用原来的传统的复制方式
+（7）对于createtemporary table 和drop temporary table语句不支持
+（8）不支持sql_slave_skip_counter
+
