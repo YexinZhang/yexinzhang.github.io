@@ -1,0 +1,139 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: mongo-a
+data:
+  mongod.yaml: |
+    systemLog:
+      timeStampFormat: iso8601-utc
+      component:
+        write:
+          verbosity: 1
+        network:
+          verbosity: -1
+      destination: file
+      path: /proc/self/fd/1
+    storage:
+      dbPath: /var/lib/mongo
+      journal:
+        enabled: true
+      wiredTiger:
+        engineConfig:
+          cacheSizeGB: 1
+    net:
+      bindIpAll: true
+      port: 27017
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongod-a-svc
+  labels:
+    svc: mongod-a-svc
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    mongo-shard-num: a
+    app: mongod
+    mongo-role: shardServer
+  ports:
+    - port: 27017
+      name: mongod-a-svc-port
+      targetPort: 27017
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo-shard-a
+  namespace: default
+  labels: 
+    mongo-shard-num: a
+    app: mongod
+    mongo-role: shardServer
+spec:
+  selector:
+    matchLabels:
+      mongo-shard-num: a
+      app: mongod
+      mongo-role: shardServer
+  serviceName: mongod-a-svc
+  replicas: 3
+  template:
+    metadata: 
+      name: mongod-a
+      labels:
+        mongo-shard-num: a
+        app: mongod
+        mongo-role: shardServer
+    spec:
+      terminationGracePeriodSeconds: 0
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+                - key: mongo-shard-num
+                  operator: In
+                  values:
+                    - a
+            topologyKey: kubernetes.io/hostname
+      containers:
+        - name: mongod-a
+          image: mongo:4.2.13
+          ports:
+            - containerPort: 27017
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: LANG
+              value: C.UTF-8
+            - name: MONGO_INITDB_ROOT_USERNAME
+              value: admin
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              value: redhat=-09
+          readinessProbe:
+            tcpSocket:
+              port: 27017
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 5
+            successThreshold: 1
+          livenessProbe:
+            tcpSocket:
+              port: 27017
+            initialDelaySeconds: 120
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 5
+            successThreshold: 1
+          volumeMounts:
+            - name: timezone
+              readOnly: true
+              mountPath: "/etc/localtime"
+            - name: mongod-a-volume
+              readOnly: false
+              mountPath: /var/lib/mongo
+            - name: config
+              readOnly: true
+              mountPath: /etc/mongo
+      volumes:
+        - name: timezone
+          hostPath:
+            path: /etc/localtime
+            type: File
+        - name: config
+          configMap:
+            name: mongo-a
+  volumeClaimTemplates:
+  - metadata:
+      name: mongod-a-volume
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: "rook-ceph-xfs-block"
+      resources:
+        requests:
+          storage: 20Gi

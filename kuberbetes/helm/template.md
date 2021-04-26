@@ -366,9 +366,7 @@ mul
 
 max
 
-
 min
-
 
 len 
   以整数返回参数的长度
@@ -376,3 +374,4 @@ len
 uuidv4
 
   生成一个uuid
+

@@ -130,3 +130,29 @@ Tips and tricks
         为了能够包含一个模板，然后对该模板的输出执行操作，Helm具有一个特殊的include函数：
         {{ include "toYaml" $value | indent 2 }}
         将其传递给$ value，然后将该模板的输出传递给indent函数。
+
+
+yaml 中存储值 并且引用
+coffee: "yes, please"
+favorite: &favoriteCoffee "Cappucino"
+coffees:
+  - Latte
+  - *favoriteCoffee
+  - Espresso
+
+
+模板
+
+{{- define "common.tplvalues.render" -}}
+    {{- if typeIS "string" .value }}
+        {{- tpl .value .context }}
+    {{- else }}
+        {{- tpl (.value | toYaml) .context }}
+    {{- end }}
+{{- end -}}
+
+使用模板 include 会把模板传给后面的数据,进行渲染
+{{- include "common.tplvalues.render" (dict "value" .Values.up "context" $) | indent 12 }}
+
+tpl:
+    使用tpl函数，开发人员可以将字符串评估为模板内的模板。

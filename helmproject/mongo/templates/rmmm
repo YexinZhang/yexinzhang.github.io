@@ -1,0 +1,3 @@
+kubectl delete pvc mongod-a-volume-mongo-shard-a-0
+kubectl delete pvc mongod-a-volume-mongo-shard-a-1
+kubectl delete pvc mongod-a-volume-mongo-shard-a-2
