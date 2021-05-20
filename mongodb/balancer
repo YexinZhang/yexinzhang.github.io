@@ -1,0 +1,5 @@
+sh.getBalancerState()
+    checks if the balancer is enabled 
+    does not check if the balancer is actively balancing chunks.
+
+sh.isBalancerRunning()
