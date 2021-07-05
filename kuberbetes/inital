@@ -58,3 +58,9 @@ kubeadm config images pull
 
 自动生成密钥
 kubeadm alpha certs certificate-key
+
+选择默认的 storageClass
+kubectl patch storageclass fast-disks -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+
+删除非cilium管理的pod
+kubectl get pods --all-namespaces -o custom-columns=NAMESPACE:.metadata.namespace,NAME:.metadata.name,HOSTNETWORK:.spec.hostNetwork --no-headers=true | grep '<none>' | awk '{print "-n "$1" "$2}' | xargs -L 1 -r kubectl delete pod
