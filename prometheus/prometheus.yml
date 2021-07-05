@@ -1,0 +1,82 @@
+# my global config
+global:
+  scrape_interval:     15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+  scrape_timeout:      10s # scrape_timeout is set to the global default (10s).
+  evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
+  
+  external_labels:
+    today: sateday
+  query_log_file: "/var/log/prometheus/query.log"
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      # - alertmanager:9093
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+# 可以定义一些规则， 方便查
+rule_files:
+  - "rules/testRule.yaml"
+  - "rules/alert.yaml"
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: 'prometheus'
+    scrape_interval: 15s # default = <global_config>.scrape_interval
+    scrape_timeout: 10s
+    metrics_path: '/metrics'
+    honor_labels: false # label 冲突
+    honor_timestamps: true 
+    scheme: 'http'
+    # relabel_configs: 
+    # - <> 重新标签
+    # metrics_relabel_configs:
+    # - <>
+    sample_limit: 0 # 将被接受的scrape样本数量
+    label_limit: 0 # label 数量限制
+    label_name_length_limit: 0
+    label_value_length_limit: 0
+    target_limit: 0 # 每个config 的target数目的限制
+
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+
+    static_configs:
+    - targets: ['localhost:9090']
+
+  - job_name: 'node_exporter'
+    file_sd_configs:
+    - files:
+      - target/*.yaml
+      refresh_interval: 60s
+
+
+# Time series Selectors
+# Instant vector selectors
+#
+# 就是普通的没有携带时间的一次搜索， 
+# 给定时间戳，一个序列的的单个样本
+# 显示该metrics下的所有时间序列
+# example:
+#   prometheus_http_requests_total{handler="/metrics"}
+#   http_requests_total{environment=~"staging|testing|development",method!="GET"}
+#   {job=~".+"}               Good!
+#   {job=~".*",method="get"}  Good!
+#   metrics name 如果要使用bool, on ignoring, group_left and group_right 作为名称
+#   在搜索时应该要这样用:
+#     {__name__="on"} #Good
+#
+# 范围向量字面量的工作方式与即时向量字面量类似，不同之处在于它们从当前时刻选择了一系列样
+# Time Duration
+#   5h
+#   1h30m
+#   5m
+#   10s
+# sum(http_requests_total{method="GET"} offset 5m) 此时间点往前5分钟的值
+# @modifier
