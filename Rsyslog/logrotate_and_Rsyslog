@@ -246,7 +246,7 @@ property(outname="message" name="msg" format="jsonf")
 input(type="imfile"
         File="/root/access.log"
         Tag="tag1"
-        Serverity="error"
+        Severity="error"
         Facility="local7"
 )
 
@@ -258,3 +258,36 @@ if $syslogtag == "relp" then {
         action(type="omfile" dirCreateMode="0755" FileCreateMode="0644"
         dynaFile="local")
 }
+
+
+------------------------------------------------------------------------------
+
+The facility is one of the following keywords: 
+    auth, authpriv, cron, daemon, ftp, kern, lpr, mail, mark, news, security (same as auth), syslog, user, uucp and local0 through local7
+    facility 指定产生消息的子系统
+    例如如果所有邮件程序使用 syslog 进行日志记录，它们都会使用mail facility (LOG_MAIL) 进行日志记录。
+    在大多数情况下，任何人都可以登录任何设施，因此我们依赖约定来选择正确的设施。
+
+The priority is one of the following keywords, in ascending order: 
+    debug, info, notice, warning, warn (same as warning), err, error (same as err), crit, alert, emerg, panic (same as emerg).
+    优先级
+
+星号 (“*”) 代表所有设施或所有优先级，具体取决于它的使用位置（句点​​之前或之后）。关键字none代表没有给定设施的优先级。
+
+可以在一个语句中使用逗号 (“,”) 运算符为单个优先级模式指定多个facility来分隔facility。
+
+可以使用分号 (“;”) 分隔符为单个操作指定多个选择器。选择器从左到右处理，每个选择器都可以覆盖前面的选择器。使用此行为，您可以从模式中排除某些优先级。
+
+您可以在每个优先级前面加上一个等式符号 (“=”) 来指定 syslogd 应该只引用这个单一的优先级，而不是这个优先级和所有更高的优先级。
+
+
+example:
+    // Store critical stuff in critical 
+    // 这会将所有优先级 crit 消息存储在文件 /var/adm/critical 中，任何内核消息除外。
+    *.=crit;kern.none   /var/adm/critical 
+
+    // 
+    kern.*      /var/adm/kernel
+    kern.crit     @finlandia    // kern的crit发送给远程主机
+    kern.crit     /dev/console  // 
+    kern.info;kern.!err   /var/adm/kernel-info

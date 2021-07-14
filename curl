@@ -1,0 +1,15 @@
+curl 选项
+
+-s 静默模式
+-w 输出指定的HTTP内容
+   %{http_code}
+   %{http_version}
+   %{local_ip}
+   %{local_port}
+   %{num_connects}
+   %{remote_ip}
+   ...
+-k --insecure 允许非ssl访问
+-f --fail 连接失败时，不显示http错误
+-e --referer 显示来源网址
+-# 显示当前进度

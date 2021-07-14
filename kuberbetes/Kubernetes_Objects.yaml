@@ -41,3 +41,15 @@ YamL file require field:
   metadata:
   spec:
   
+
+kind: Service
+spec:
+  publishNotReadyAddresses: true
+
+  当pod内部的探针尚未就绪时， 依旧把pod附加到svc的endpoint中
+
+kind: statefulset:
+spec:
+  podManagementPolicy: Parallel
+   // 并行启动pod
+
